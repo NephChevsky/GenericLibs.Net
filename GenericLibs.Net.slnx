@@ -2,4 +2,5 @@
   <Project Path="DiscordLib/DiscordLib.csproj" Id="4c8f7e9b-94ac-4f8f-a3bc-e1b465d21534" />
   <Project Path="NotifierLib/NotifierLib.csproj" Id="881dc9af-3f97-40ee-9b65-a1d311a71daf" />
   <Project Path="PostgresLib/PostgresLib.csproj" />
+  <Project Path="SerilogLib/SerilogLib.csproj" Id="f7052423-3b73-436f-ad6e-695710c05bbd" />
 </Solution>
