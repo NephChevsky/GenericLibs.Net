@@ -3,14 +3,9 @@ using Renci.SshNet;
 
 namespace SshLib
 {
-	public class SshService : ISshService
+	public class SshService(ILogger<SshService> logger) : ISshService
 	{
-		private readonly ILogger<SshService> _logger;
-
-		public SshService(ILogger<SshService> logger)
-		{
-			_logger = logger;
-		}
+		private readonly ILogger<SshService> _logger = logger;
 
 		public Task<SshCommandResult> ExecuteCommandAsync(string host, string username, string password, string command)
 		{
