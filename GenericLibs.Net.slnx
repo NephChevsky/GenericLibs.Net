@@ -2,6 +2,7 @@
   <Project Path="DiscordLib/DiscordLib.csproj" Id="4c8f7e9b-94ac-4f8f-a3bc-e1b465d21534" />
   <Project Path="JwtLib/JwtLib.csproj" Id="4bbc11c7-207b-4ec7-ba78-eaa9c68e8122" />
   <Project Path="NotifierLib/NotifierLib.csproj" Id="881dc9af-3f97-40ee-9b65-a1d311a71daf" />
+  <Project Path="OpenAILib/OpenAILib.csproj" Id="e270ed25-cbbf-416a-a0bb-b108af7dcb5f" />
   <Project Path="PostgresLib/PostgresLib.csproj" />
   <Project Path="RedisLib/RedisLib.csproj" Id="3375817a-34b6-4a5b-baa7-8a07fa8170ff" />
   <Project Path="SerilogLib/SerilogLib.csproj" Id="f7052423-3b73-436f-ad6e-695710c05bbd" />
