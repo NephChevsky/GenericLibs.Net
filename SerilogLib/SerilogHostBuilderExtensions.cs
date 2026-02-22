@@ -5,7 +5,7 @@ namespace SerilogLib
 {
 	public static class SerilogHostBuilderExtensions
 	{
-		public static IHostBuilder UseSerilog(this IHostBuilder hostBuilder)
+		public static IHostBuilder UseSerilogLib(this IHostBuilder hostBuilder)
 		{
 			Log.Logger = new LoggerConfiguration()
 				.MinimumLevel.Information()
