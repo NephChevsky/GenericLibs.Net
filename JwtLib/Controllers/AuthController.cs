@@ -17,7 +17,7 @@ namespace JwtLib.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier) : ControllerBase
+	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier, DbSet<TUser> users, DbSet<TDevice> devices) : ControllerBase
 		where TDbContext : DbContext
 		where TUser : class, IJwtUser
 		where TDevice : class, IJwtDevice, new()
@@ -29,8 +29,8 @@ namespace JwtLib.Controllers
 
 		private static readonly List<DateTime> _loggingTries = [];
 
-		protected abstract DbSet<TUser> Users { get; }
-		protected abstract DbSet<TDevice> Devices { get; }
+		protected readonly DbSet<TUser> Users = users;
+		protected readonly DbSet<TDevice> Devices = devices;
 
 		private static string ComputeSha256(string input)
 		{
