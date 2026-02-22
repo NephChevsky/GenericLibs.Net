@@ -8,7 +8,7 @@ namespace JwtLib
 {
 	public static class JwtServiceCollectionExtensions
 	{
-		public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+		public static IServiceCollection AddJwtAuthenticationLib(this IServiceCollection services, IConfiguration configuration)
 		{
 			IConfigurationSection jwtSettings = configuration.GetSection("JwtSettings");
 			string jwtSecretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");

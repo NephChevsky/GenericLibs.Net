@@ -6,7 +6,7 @@ namespace RedisLib
 {
 	public static class RedisServiceCollectionExtensions
 	{
-		public static IServiceCollection AddRedis(this IServiceCollection services, IConfiguration configuration)
+		public static IServiceCollection AddRedisLib(this IServiceCollection services, IConfiguration configuration)
 		{
 			string connectionString = configuration.GetConnectionString("Redis") ?? throw new InvalidOperationException("Connection string 'Redis' was not found");
 

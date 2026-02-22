@@ -4,7 +4,7 @@ namespace JwtLib
 {
 	public static class JwtApplicationBuilderExtensions
 	{
-		public static IApplicationBuilder UseJwtAuthentication(this IApplicationBuilder app)
+		public static IApplicationBuilder UseJwtAuthenticationLib(this IApplicationBuilder app)
 		{
 			app.UseAuthentication();
 			app.UseAuthorization();

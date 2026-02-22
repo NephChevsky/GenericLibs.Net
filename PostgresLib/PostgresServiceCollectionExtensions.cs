@@ -6,7 +6,7 @@ namespace PostgresLib
 {
 	public static class PostgresServiceCollectionExtensions
 	{
-		public static IServiceCollection AddPostgresDb<T>(this IServiceCollection services, IConfiguration configuration) where T : DbContext
+		public static IServiceCollection AddPostgresLib<T>(this IServiceCollection services, IConfiguration configuration) where T : DbContext
 		{
 			string connectionString = configuration.GetConnectionString("Postgres") ?? throw new InvalidOperationException("Connection string 'Postgres' was not found");
 			
