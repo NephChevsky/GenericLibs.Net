@@ -9,12 +9,14 @@ namespace PostgresLib
 		public static IServiceCollection AddPostgresLib<T>(this IServiceCollection services, IConfiguration configuration) where T : DbContext
 		{
 			string connectionString = configuration.GetConnectionString("Postgres") ?? throw new InvalidOperationException("Connection string 'Postgres' was not found");
-			
+
 			services.AddDbContext<T>(options =>
 			{
 				options.UseNpgsql(connectionString)
 					.UseSnakeCaseNamingConvention();
 			});
+
+			services.AddHttpContextAccessor();
 
 			return services;
 		}
