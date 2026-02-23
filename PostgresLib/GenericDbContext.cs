@@ -162,7 +162,10 @@ namespace PostgresLib
 				{
 					if (entry.State == EntityState.Added)
 					{
-						trackable.CreatedAt = now;
+						if (trackable.CreatedAt == default)
+						{
+							trackable.CreatedAt = now;
+						}
 						trackable.UpdatedAt = now;
 					}
 					else if (entry.State == EntityState.Modified)
