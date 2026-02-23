@@ -154,7 +154,7 @@ namespace PostgresLib
 
 		private void ApplyDateTimeTracking()
 		{
-			var now = DateTime.UtcNow;
+			DateTime now = DateTime.UtcNow;
 
 			foreach (var entry in ChangeTracker.Entries())
 			{
