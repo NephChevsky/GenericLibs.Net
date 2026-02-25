@@ -22,7 +22,7 @@ public class LiveboxService : ILiveboxService
 		request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-sah-ws-4-call+json");
 		request.Headers.Add("Authorization", "X-Sah-Login");
 		HttpResponseMessage response = await client.SendAsync(request);
-		string? contextId = (await response.Content.ReadFromJsonAsync<LiveboxResponse>())?.Data["contextID"].ToString();
+		string? contextId = (await response.Content.ReadFromJsonAsync<LiveboxResponse>())?.Data?["contextID"].ToString();
 
 		if (enabled)
 		{
