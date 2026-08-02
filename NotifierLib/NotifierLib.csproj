@@ -6,4 +6,15 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Neph.GenericLibs.Net.NotifierLib</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Neph</Authors>
+    <Description>Generic notifier abstractions for sending notifications from ASP.NET Core applications.</Description>
+    <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NephChevsky/GenericLibs.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>notifier;notification;dotnet;neph;genericlibs.net</PackageTags>
+  </PropertyGroup>
+
 </Project>
