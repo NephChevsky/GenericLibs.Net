@@ -6,6 +6,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Neph.GenericLibs.Net.PostgresLib</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Neph</Authors>
+    <Description>Generic PostgreSQL/EF Core DbContext helpers and service registration extensions for ASP.NET Core applications.</Description>
+    <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NephChevsky/GenericLibs.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>postgres;postgresql;efcore;entityframework;dotnet;neph;genericlibs.net</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
