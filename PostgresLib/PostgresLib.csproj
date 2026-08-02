@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.PostgresLib</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Neph</Authors>
     <Description>Generic PostgreSQL/EF Core DbContext helpers and service registration extensions for ASP.NET Core applications.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
@@ -19,12 +19,12 @@
 
   <ItemGroup>
     <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.9" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.3" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
 
 </Project>
