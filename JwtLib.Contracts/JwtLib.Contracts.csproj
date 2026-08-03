@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Neph.GenericLibs.Net.JwtLib.Contracts</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Neph</Authors>
+    <Description>Dependency-free request/response DTOs shared between JwtLib's AuthController and client applications.</Description>
+    <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NephChevsky/GenericLibs.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>jwt;auth;authentication;dtos;dotnet;neph;genericlibs.net</PackageTags>
+  </PropertyGroup>
+
+</Project>
