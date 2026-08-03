@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using NotifierLib;
@@ -17,7 +18,7 @@ namespace JwtLib.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier, DbSet<TUser> users, DbSet<TDevice> devices) : ControllerBase
+	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier, IHostEnvironment environment, DbSet<TUser> users, DbSet<TDevice> devices) : ControllerBase
 		where TDbContext : DbContext
 		where TUser : class, IJwtUser, new()
 		where TDevice : class, IJwtDevice, new()
@@ -26,48 +27,26 @@ namespace JwtLib.Controllers
 		protected readonly TDbContext _db = db;
 		protected readonly IConfiguration _configuration = configuration;
 		protected readonly INotifier _notifier = notifier;
+		protected readonly IHostEnvironment _environment = environment;
 
 		private static readonly List<DateTime> _loggingTries = [];
 
 		protected readonly DbSet<TUser> Users = users;
 		protected readonly DbSet<TDevice> Devices = devices;
 
-		/// <summary>
-		/// Prefix used for the auto-generated name given to guest accounts. Used to tell guest
-		/// accounts apart from accounts that have chosen a username, without needing a dedicated column.
-		/// </summary>
 		protected virtual string GuestNamePrefix => "guest-";
 
-		/// <summary>
-		/// Role assigned to freshly created guest accounts.
-		/// </summary>
 		protected virtual string GuestRoleName => "Guest";
 
-		/// <summary>
-		/// Role an account is promoted to once it claims a username and password.
-		/// </summary>
 		protected virtual string DefaultRoleName => "User";
 
-		/// <summary>
-		/// Whether new guest accounts can be created via <see cref="CreateGuest"/>. Disabled by default;
-		/// enable it by setting the "JwtSettings:AllowGuestAccountCreation" configuration value to true.
-		/// Existing guest accounts can still log back in via <see cref="RedeemGuest"/> even when disabled.
-		/// </summary>
 		protected virtual bool GuestAccountsEnabled => _configuration.GetValue("JwtSettings:AllowGuestAccountCreation", false);
 
-		/// <summary>
-		/// Whether an authenticated user can change their username via <see cref="ChangeUsername"/>
-		/// independently of their password. Disabled by default; enable it by setting the
-		/// "JwtSettings:AllowUsernameChange" configuration value to true.
-		/// </summary>
 		protected virtual bool UsernameChangeEnabled => _configuration.GetValue("JwtSettings:AllowUsernameChange", false);
 
-		/// <summary>
-		/// Whether brand new accounts can be created directly with a username/password via
-		/// <see cref="Register"/>. Disabled by default; enable it by setting the
-		/// "JwtSettings:AllowRegistration" configuration value to true.
-		/// </summary>
 		protected virtual bool RegistrationEnabled => _configuration.GetValue("JwtSettings:AllowRegistration", false);
+
+		protected virtual bool CookieSecure => !_environment.IsDevelopment() || _configuration.GetValue("JwtSettings:CookieSecure", true);
 
 		private static string ComputeSha256(string input)
 		{
@@ -100,22 +79,18 @@ namespace JwtLib.Controllers
 			return (accessToken, refreshToken);
 		}
 
-		private static CookieOptions GetCookieOptions()
+		private CookieOptions GetCookieOptions()
 		{
 			return new CookieOptions
 			{
 				HttpOnly = true,
-				Secure = true,
+				Secure = CookieSecure,
 				SameSite = SameSiteMode.Strict,
 				Expires = DateTime.UtcNow.AddDays(7),
 				Path = "/"
 			};
 		}
 
-		/// <summary>
-		/// Issues a new access/refresh token pair for <paramref name="user"/>, upserts the calling
-		/// device's refresh token and appends the refresh token cookie to the response.
-		/// </summary>
 		private async Task<AuthLoginResponse> IssueSessionAsync(TUser user)
 		{
 			(string accessToken, string refreshToken) = GenerateTokens(user.Id, user.Role);
@@ -183,12 +158,6 @@ namespace JwtLib.Controllers
 			return Unauthorized();
 		}
 
-		/// <summary>
-		/// Creates a brand new guest account with no username/password, logs it in immediately and
-		/// returns a one-time recovery code the client is responsible for persisting. The code is the
-		/// only way to log back into this guest account from another device/session, since the secret
-		/// it embeds is never stored in plain text.
-		/// </summary>
 		[AllowAnonymous]
 		[HttpPost("guest")]
 		public async Task<IActionResult> CreateGuest()
@@ -228,9 +197,6 @@ namespace JwtLib.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Logs back into an existing guest account using the recovery code returned by <see cref="CreateGuest"/>.
-		/// </summary>
 		[AllowAnonymous]
 		[HttpPost("guest/redeem")]
 		public async Task<IActionResult> RedeemGuest([FromBody] AuthRedeemGuestRequest request)
@@ -275,10 +241,6 @@ namespace JwtLib.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Creates a brand new account directly with a chosen username/password (no guest account or
-		/// recovery code involved) and logs it in immediately. Gated by <see cref="RegistrationEnabled"/>.
-		/// </summary>
 		[AllowAnonymous]
 		[HttpPost("register")]
 		public async Task<IActionResult> Register([FromBody] AuthSetCredentialsRequest request)
@@ -330,10 +292,6 @@ namespace JwtLib.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Lets the currently authenticated user (guest or not) set/change a username and password so
-		/// they can subsequently log back in with <see cref="Login"/> instead of a recovery code.
-		/// </summary>
 		[Authorize]
 		[HttpPost("claim")]
 		public async Task<IActionResult> ClaimAccount([FromBody] AuthSetCredentialsRequest request)
@@ -388,10 +346,6 @@ namespace JwtLib.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Lets the currently authenticated (non-guest) user change their username without touching
-		/// their password. Gated by <see cref="UsernameChangeEnabled"/>.
-		/// </summary>
 		[Authorize]
 		[HttpPost("username")]
 		public async Task<IActionResult> ChangeUsername([FromBody] AuthChangeUsernameRequest request)
@@ -440,10 +394,6 @@ namespace JwtLib.Controllers
 			}
 		}
 
-		/// <summary>
-		/// Lets the currently authenticated (non-guest) user change their password, after verifying
-		/// their current password, without touching their username.
-		/// </summary>
 		[Authorize]
 		[HttpPost("password")]
 		public async Task<IActionResult> ChangePassword([FromBody] AuthChangePasswordRequest request)
