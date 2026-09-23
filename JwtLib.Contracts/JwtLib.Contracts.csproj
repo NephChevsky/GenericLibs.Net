@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.JwtLib.Contracts</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Neph</Authors>
     <Description>Dependency-free request/response DTOs shared between JwtLib's AuthController and client applications.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
