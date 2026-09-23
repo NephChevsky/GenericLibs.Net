@@ -524,6 +524,8 @@ namespace JwtLib.Controllers
 		{
 			string? refreshToken = Request.Cookies["refresh_token"];
 
+			Response.Cookies.Delete("refresh_token", GetCookieOptions());
+
 			if (string.IsNullOrEmpty(refreshToken))
 			{
 				return Ok();
