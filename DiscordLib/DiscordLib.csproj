@@ -9,7 +9,7 @@
 
 	<PropertyGroup>
 		<PackageId>Neph.GenericLibs.Net.DiscordLib</PackageId>
-		<Version>0.1.0</Version>
+		<Version>0.1.1</Version>
 		<Authors>Neph</Authors>
 		<Description>Generic Discord client helpers and service registration extensions for ASP.NET Core applications.</Description>
 		<PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>

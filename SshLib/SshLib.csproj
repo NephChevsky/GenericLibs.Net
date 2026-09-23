@@ -6,6 +6,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Neph.GenericLibs.Net.SshLib</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Neph</Authors>
+    <Description>Generic SSH command execution helpers and service registration extensions for ASP.NET Core applications.</Description>
+    <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NephChevsky/GenericLibs.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>ssh;remote;dotnet;neph;genericlibs.net</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />

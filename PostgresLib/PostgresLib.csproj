@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.PostgresLib</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>Neph</Authors>
     <Description>Generic PostgreSQL/EF Core DbContext helpers and service registration extensions for ASP.NET Core applications.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
