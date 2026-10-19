@@ -162,8 +162,7 @@ namespace CopilotLib
 
 			if (!string.IsNullOrWhiteSpace(sessionId))
 			{
-				IList<SessionMetadata> existing = await _client.ListSessionsAsync();
-				if (existing.Any(s => s.SessionId == sessionId))
+				try
 				{
 					_logger.LogInformation("Resuming Copilot session {SessionId}", sessionId);
 					return await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
@@ -175,6 +174,10 @@ namespace CopilotLib
 						AvailableTools = ["web_fetch"],
 						OnPermissionRequest = deny,
 					}, cancellationToken);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					_logger.LogWarning(ex, "Failed to resume Copilot session {SessionId}, creating a new one", sessionId);
 				}
 			}
 
