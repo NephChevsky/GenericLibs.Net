@@ -1,0 +1,12 @@
+<Project>
+  <!-- GitHub.Copilot.SDK ships its runtime download/copy targets in build/ (not buildTransitive/),
+       so they do not flow to projects that only reference CopilotLib. Import them explicitly.
+       Keep the version in sync with the GitHub.Copilot.SDK PackageReference in CopilotLib.csproj. -->
+  <PropertyGroup>
+    <_CopilotSdkTargets>$(NuGetPackageRoot)github.copilot.sdk/1.0.22/build/GitHub.Copilot.SDK.targets</_CopilotSdkTargets>
+  </PropertyGroup>
+  <Import Project="$(_CopilotSdkTargets)" Condition="Exists('$(_CopilotSdkTargets)') And '$(_CopilotSdkTargetsImported)' != 'true'" />
+  <PropertyGroup>
+    <_CopilotSdkTargetsImported>true</_CopilotSdkTargetsImported>
+  </PropertyGroup>
+</Project>
