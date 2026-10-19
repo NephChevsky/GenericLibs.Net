@@ -86,26 +86,13 @@ namespace CopilotLib
 		public async Task<IReadOnlyList<ChatSessionInfo>> GetSessionsAsync(CancellationToken cancellationToken = default)
 		{
 			await EnsureStartedAsync(cancellationToken);
-			IList<SessionMetadata> sessions = await _client.ListSessionsAsync();
+			IList<SessionMetadata> sessions = await _client.ListSessionsAsync(cancellationToken: cancellationToken);
 			List<ChatSessionInfo> result = [];
 			foreach (SessionMetadata s in sessions.OrderByDescending(s => s.ModifiedTime))
 			{
-				string? title = null;
-				try
-				{
-					await using CopilotSession session = await GetSessionAsync(null, null, s.SessionId, false, cancellationToken);
-					IReadOnlyList<SessionEvent> events = await session.GetEventsAsync(cancellationToken);
-					title = events.OfType<SessionTitleChangedEvent>().LastOrDefault()?.Data.Title;
-				}
-				catch (Exception ex) when (ex is not OperationCanceledException)
-				{
-					_logger.LogWarning(ex, "Could not read title of Copilot session {SessionId}", s.SessionId);
-				}
-
 				result.Add(new ChatSessionInfo
 				{
 					SessionId = s.SessionId,
-					Title = title ?? s.Summary,
 					StartTime = s.StartTime,
 					ModifiedTime = s.ModifiedTime,
 					Summary = s.Summary,
