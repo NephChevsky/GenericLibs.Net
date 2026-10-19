@@ -7,6 +7,17 @@
     <NoWarn>$(NoWarn);GHCP001</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Neph.GenericLibs.Net.CopilotLib</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Neph</Authors>
+    <Description>GitHub Copilot SDK wrapper with a service, DI registration and a reusable ASP.NET Core chatbot controller.</Description>
+    <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NephChevsky/GenericLibs.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>copilot;github-copilot;chatbot;dotnet;neph;genericlibs.net</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
