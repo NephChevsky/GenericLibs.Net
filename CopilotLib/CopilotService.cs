@@ -154,10 +154,11 @@ namespace CopilotLib
 				? null
 				: new SystemMessageConfig { Mode = SystemMessageMode.Append, Content = systemMessage };
 
-			// Plain text generation only: no tools, no file access.
-			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny =
-				(_, _) => Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed"));
-			List<string> excludedTools = ["view", "create", "edit", "str_replace_editor", "read_file", "edit_file", "write_file", "glob", "grep", "bash", "powershell"];
+			// Text generation with web browsing only: no file or shell access.
+			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = (request, invocation) =>
+				request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)
+					? PermissionHandler.ApproveAll(request, invocation)
+					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed"));
 
 			if (!string.IsNullOrWhiteSpace(sessionId))
 			{
@@ -171,10 +172,9 @@ namespace CopilotLib
 						Streaming = streaming,
 						SystemMessage = system,
 						WorkingDirectory = _workingDirectory,
-						AvailableTools = [],
-						ExcludedTools = excludedTools,
+						AvailableTools = ["web_fetch"],
 						OnPermissionRequest = deny,
-					});
+					}, cancellationToken);
 				}
 			}
 
@@ -185,10 +185,41 @@ namespace CopilotLib
 				Streaming = streaming,
 				SystemMessage = system,
 				WorkingDirectory = _workingDirectory,
-				AvailableTools = [],
-				ExcludedTools = excludedTools,
+				AvailableTools = ["web_fetch"],
 				OnPermissionRequest = deny,
-			});
+			}, cancellationToken);
+		}
+
+		private static bool IsPublicHttpUrl(string? value)
+		{
+			if (!Uri.TryCreate(value, UriKind.Absolute, out Uri? uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+			{
+				return false;
+			}
+
+			if (uri.IsLoopback || uri.Host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) || uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+			{
+				return false;
+			}
+
+			if (System.Net.IPAddress.TryParse(uri.Host, out System.Net.IPAddress? ip))
+			{
+				if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6UniqueLocal)
+				{
+					return false;
+				}
+
+				if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+				{
+					byte[] b = ip.GetAddressBytes();
+					if (b[0] == 10 || b[0] == 127 || b[0] == 0 || (b[0] == 169 && b[1] == 254) || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168))
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
 		}
 
 		private async Task EnsureStartedAsync(CancellationToken cancellationToken)
