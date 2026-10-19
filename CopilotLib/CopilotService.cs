@@ -119,13 +119,14 @@ namespace CopilotLib
 		public async Task<IReadOnlyList<ChatMessageInfo>?> GetMessagesAsync(string sessionId, CancellationToken cancellationToken = default)
 		{
 			await EnsureStartedAsync(cancellationToken);
-			IList<SessionMetadata> sessions = await _client.ListSessionsAsync();
-			if (!sessions.Any(s => s.SessionId == sessionId))
+
+			await using CopilotSession session = await GetSessionAsync(null, null, sessionId, false, cancellationToken);
+
+			if (session == null)
 			{
 				return null;
 			}
 
-			await using CopilotSession session = await GetSessionAsync(null, null, sessionId, false, cancellationToken);
 			IReadOnlyList<SessionEvent> events = await session.GetEventsAsync(cancellationToken);
 
 			List<ChatMessageInfo> messages = [];
