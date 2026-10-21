@@ -18,5 +18,7 @@ namespace CopilotLib.DTO
 		public string Content { get; set; } = string.Empty;
 
 		public DateTimeOffset Timestamp { get; set; }
+
+		public List<ChatAttachment> Attachments { get; set; } = [];
 	}
 }

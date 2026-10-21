@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.CopilotLib</PackageId>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <Authors>Neph</Authors>
     <Description>GitHub Copilot SDK wrapper with a service, DI registration and a reusable ASP.NET Core chatbot controller.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>

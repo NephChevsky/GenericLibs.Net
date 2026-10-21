@@ -40,22 +40,7 @@ namespace CopilotLib
 			_client = new CopilotClient(options);
 		}
 
-		public async Task<string?> AskAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, CancellationToken cancellationToken = default)
-		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, tools, cancellationToken);
-			_logger.LogInformation("Sending Copilot prompt");
-			AssistantMessageEvent? response = await session.SendAndWaitAsync(new MessageOptions { Prompt = prompt }, cancellationToken: cancellationToken);
-			return response?.Data.Content;
-		}
-
-		public async Task<T> AskAsync<T>(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, CancellationToken cancellationToken = default)
-		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, tools, cancellationToken);
-			_logger.LogInformation("Sending Copilot structured prompt");
-			return await session.SendAndWaitAsync<T>(prompt, cancellationToken: cancellationToken);
-		}
-
-		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, IReadOnlyList<ChatAttachment>? attachments = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
 			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, true, tools, cancellationToken);
 
@@ -76,7 +61,13 @@ namespace CopilotLib
 				}
 			});
 
-			await session.SendAsync(new MessageOptions { Prompt = prompt }, cancellationToken);
+			MessageOptions options = new() { Prompt = prompt };
+			if (attachments is { Count: > 0 })
+			{
+				options.Attachments = [.. attachments.Select(a => (Attachment)new AttachmentBlob { Data = a.Data, MimeType = a.MimeType, DisplayName = a.Name })];
+			}
+
+			await session.SendAsync(options, cancellationToken);
 
 			await foreach (string chunk in channel.Reader.ReadAllAsync(cancellationToken))
 			{
@@ -130,13 +121,30 @@ namespace CopilotLib
 
 			IReadOnlyList<SessionEvent> events = await session.GetEventsAsync(cancellationToken);
 
+			Dictionary<string, SessionBinaryAssetData> assets = events.OfType<SessionBinaryAssetEvent>().GroupBy(e => e.Data.AssetId).ToDictionary(g => g.Key, g => g.First().Data);
+
 			List<ChatMessageInfo> messages = [];
 			foreach (SessionEvent evt in events)
 			{
 				switch (evt)
 				{
 					case UserMessageEvent user:
-						messages.Add(new ChatMessageInfo { Role = "user", Content = user.Data.Content, Timestamp = user.Timestamp });
+						ChatMessageInfo userMessage = new() { Role = "user", Content = user.Data.Content, Timestamp = user.Timestamp };
+						foreach (AttachmentBlob blob in (user.Data.Attachments ?? []).OfType<AttachmentBlob>())
+						{
+							string? data = blob.Data;
+							if (string.IsNullOrEmpty(data) && blob.AssetId is not null && assets.TryGetValue(blob.AssetId, out SessionBinaryAssetData? asset))
+							{
+								data = asset.Data;
+							}
+
+							if (!string.IsNullOrEmpty(data))
+							{
+								userMessage.Attachments.Add(new ChatAttachment { Name = blob.DisplayName ?? string.Empty, MimeType = blob.MimeType ?? "application/octet-stream", Data = data });
+							}
+						}
+
+						messages.Add(userMessage);
 						break;
 					case AssistantMessageEvent assistant when !string.IsNullOrEmpty(assistant.Data.Content):
 						messages.Add(new ChatMessageInfo { Role = "assistant", Content = assistant.Data.Content, Timestamp = assistant.Timestamp });

@@ -20,20 +20,6 @@ namespace CopilotLib.Controllers
 		/// <summary>Optional custom tools the assistant may call. Evaluated per request, so tools can capture request-scoped state (e.g. the current user).</summary>
 		protected virtual IReadOnlyList<AIFunction>? Tools => null;
 
-		[HttpPost]
-		public async Task<ActionResult<ChatBotResponse>> Chat([FromBody] ChatBotRequest request, CancellationToken cancellationToken)
-		{
-			if (string.IsNullOrWhiteSpace(request.Message))
-			{
-				return BadRequest("Message is required");
-			}
-
-			string sessionId = string.IsNullOrWhiteSpace(request.SessionId) ? Guid.NewGuid().ToString() : request.SessionId;
-			string? reply = await _copilot.AskAsync(request.Message, SystemMessage, Model, sessionId, Tools, cancellationToken);
-
-			return Ok(new ChatBotResponse { SessionId = sessionId, Reply = reply ?? string.Empty });
-		}
-
 		[HttpGet("sessions")]
 		public async Task<ActionResult<IReadOnlyList<ChatSessionInfo>>> GetSessions(CancellationToken cancellationToken)
 		{
@@ -56,7 +42,7 @@ namespace CopilotLib.Controllers
 		[HttpPost("stream")]
 		public async Task ChatStream([FromBody] ChatBotRequest request, CancellationToken cancellationToken)
 		{
-			if (string.IsNullOrWhiteSpace(request.Message))
+			if (string.IsNullOrWhiteSpace(request.Message) && request.Attachments is not { Count: > 0 })
 			{
 				Response.StatusCode = StatusCodes.Status400BadRequest;
 				await Response.WriteAsync("Message is required", cancellationToken);
@@ -69,7 +55,7 @@ namespace CopilotLib.Controllers
 			Response.Headers["X-Accel-Buffering"] = "no";
 			Response.ContentType = "text/plain; charset=utf-8";
 
-			await foreach (string chunk in _copilot.AskStreamingAsync(request.Message, SystemMessage, Model, sessionId, Tools, cancellationToken))
+			await foreach (string chunk in _copilot.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, SystemMessage, Model, sessionId, Tools, request.Attachments, cancellationToken))
 			{
 				await Response.WriteAsync(chunk, cancellationToken);
 				await Response.Body.FlushAsync(cancellationToken);
