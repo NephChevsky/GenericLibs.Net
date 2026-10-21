@@ -1,6 +1,7 @@
 using CopilotLib.DTO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.AI;
 
 namespace CopilotLib.Controllers
 {
@@ -16,6 +17,9 @@ namespace CopilotLib.Controllers
 		/// <summary>Optional model override. Falls back to the configured default.</summary>
 		protected virtual string? Model => null;
 
+		/// <summary>Optional custom tools the assistant may call. Evaluated per request, so tools can capture request-scoped state (e.g. the current user).</summary>
+		protected virtual IReadOnlyList<AIFunction>? Tools => null;
+
 		[HttpPost]
 		public async Task<ActionResult<ChatBotResponse>> Chat([FromBody] ChatBotRequest request, CancellationToken cancellationToken)
 		{
@@ -25,7 +29,7 @@ namespace CopilotLib.Controllers
 			}
 
 			string sessionId = string.IsNullOrWhiteSpace(request.SessionId) ? Guid.NewGuid().ToString() : request.SessionId;
-			string? reply = await _copilot.AskAsync(request.Message, SystemMessage, Model, sessionId, cancellationToken);
+			string? reply = await _copilot.AskAsync(request.Message, SystemMessage, Model, sessionId, Tools, cancellationToken);
 
 			return Ok(new ChatBotResponse { SessionId = sessionId, Reply = reply ?? string.Empty });
 		}
@@ -65,7 +69,7 @@ namespace CopilotLib.Controllers
 			Response.Headers["X-Accel-Buffering"] = "no";
 			Response.ContentType = "text/plain; charset=utf-8";
 
-			await foreach (string chunk in _copilot.AskStreamingAsync(request.Message, SystemMessage, Model, sessionId, cancellationToken))
+			await foreach (string chunk in _copilot.AskStreamingAsync(request.Message, SystemMessage, Model, sessionId, Tools, cancellationToken))
 			{
 				await Response.WriteAsync(chunk, cancellationToken);
 				await Response.Body.FlushAsync(cancellationToken);

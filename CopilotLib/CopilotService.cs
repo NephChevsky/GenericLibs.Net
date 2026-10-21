@@ -3,6 +3,7 @@ using System.Threading.Channels;
 using CopilotLib.DTO;
 using GitHub.Copilot;
 using GitHub.Copilot.Rpc;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -39,24 +40,24 @@ namespace CopilotLib
 			_client = new CopilotClient(options);
 		}
 
-		public async Task<string?> AskAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, CancellationToken cancellationToken = default)
+		public async Task<string?> AskAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, CancellationToken cancellationToken = default)
 		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, cancellationToken);
+			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, tools, cancellationToken);
 			_logger.LogInformation("Sending Copilot prompt");
 			AssistantMessageEvent? response = await session.SendAndWaitAsync(new MessageOptions { Prompt = prompt }, cancellationToken: cancellationToken);
 			return response?.Data.Content;
 		}
 
-		public async Task<T> AskAsync<T>(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, CancellationToken cancellationToken = default)
+		public async Task<T> AskAsync<T>(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, CancellationToken cancellationToken = default)
 		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, cancellationToken);
+			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, false, tools, cancellationToken);
 			_logger.LogInformation("Sending Copilot structured prompt");
 			return await session.SendAndWaitAsync<T>(prompt, cancellationToken: cancellationToken);
 		}
 
-		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, true, cancellationToken);
+			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, true, tools, cancellationToken);
 
 			Channel<string> channel = Channel.CreateUnbounded<string>();
 			using IDisposable subscription = session.On<SessionEvent>(evt =>
@@ -120,7 +121,7 @@ namespace CopilotLib
 		{
 			await EnsureStartedAsync(cancellationToken);
 
-			await using CopilotSession session = await GetSessionAsync(null, null, sessionId, false, cancellationToken);
+			await using CopilotSession session = await GetSessionAsync(null, null, sessionId, false, null, cancellationToken);
 
 			if (session == null)
 			{
@@ -146,9 +147,13 @@ namespace CopilotLib
 			return messages;
 		}
 
-		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? sessionId, bool streaming, CancellationToken cancellationToken)
+		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, CancellationToken cancellationToken)
 		{
 			await EnsureStartedAsync(cancellationToken);
+
+			List<AIFunctionDeclaration> customTools = tools is null ? [] : [.. tools];
+			HashSet<string> customToolNames = [.. customTools.Select(t => t.Name)];
+			List<string> availableTools = ["web_fetch", .. customToolNames];
 
 			SystemMessageConfig? system = string.IsNullOrWhiteSpace(systemMessage)
 				? null
@@ -156,7 +161,7 @@ namespace CopilotLib
 
 			// Text generation with web browsing only: no file or shell access.
 			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = (request, invocation) =>
-				request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)
+				(request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)) || (request is PermissionRequestCustomTool custom && customToolNames.Contains(custom.ToolName))
 					? PermissionHandler.ApproveAll(request, invocation)
 					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed"));
 
@@ -171,7 +176,8 @@ namespace CopilotLib
 						Streaming = streaming,
 						SystemMessage = system,
 						WorkingDirectory = _workingDirectory,
-						AvailableTools = ["web_fetch"],
+						Tools = customTools,
+						AvailableTools = availableTools,
 						OnPermissionRequest = deny,
 					}, cancellationToken);
 				}
@@ -188,7 +194,8 @@ namespace CopilotLib
 				Streaming = streaming,
 				SystemMessage = system,
 				WorkingDirectory = _workingDirectory,
-				AvailableTools = ["web_fetch"],
+				Tools = customTools,
+				AvailableTools = availableTools,
 				OnPermissionRequest = deny,
 			}, cancellationToken);
 		}
