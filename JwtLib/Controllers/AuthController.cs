@@ -95,7 +95,26 @@ namespace JwtLib.Controllers
 		{
 			(string accessToken, string refreshToken) = GenerateTokens(user.Id, user.Role);
 
-			TDevice? device = Devices.FirstOrDefault(d => d.OwnerId == user.Id && d.Name == Request.Headers.UserAgent.ToString());
+			// Devices are identified by the refresh token they hold, not by User-Agent: browsers send identical
+			// (reduced) User-Agents across machines, which made different devices overwrite each other's session.
+			TDevice? device = null;
+			string? currentRefreshToken = Request.Cookies["refresh_token"];
+			if (!string.IsNullOrEmpty(currentRefreshToken))
+			{
+				string currentHash = ComputeSha256(currentRefreshToken);
+				device = Devices.FirstOrDefault(d => d.OwnerId == user.Id && d.RefreshToken == currentHash);
+			}
+
+			DateTime now = DateTime.UtcNow;
+			List<TDevice> expiredDevices = Devices
+				.Where(d => d.OwnerId == user.Id && (d.RefreshTokenExpiresAt == null || d.RefreshTokenExpiresAt < now))
+				.ToList();
+			if (device != null)
+			{
+				expiredDevices.Remove(device);
+			}
+			Devices.RemoveRange(expiredDevices);
+
 			if (device == null)
 			{
 				device = new TDevice
