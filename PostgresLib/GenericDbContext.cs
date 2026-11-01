@@ -54,12 +54,12 @@ namespace PostgresLib
 				}
 			}
 
-				// Automatically apply soft delete query filters
-				ApplySoftDeleteQueryFilters(modelBuilder);
+			// Automatically apply soft delete query filters
+			ApplySoftDeleteQueryFilters(modelBuilder);
 
-				// Automatically apply owner query filters
-				ApplyOwnerQueryFilters(modelBuilder);
-			}
+			// Automatically apply owner query filters
+			ApplyOwnerQueryFilters(modelBuilder);
+		}
 
 		public override int SaveChanges()
 		{
