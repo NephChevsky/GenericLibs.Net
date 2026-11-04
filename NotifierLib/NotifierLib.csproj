@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.NotifierLib</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Neph</Authors>
     <Description>Generic notifier abstractions for sending notifications from ASP.NET Core applications.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>

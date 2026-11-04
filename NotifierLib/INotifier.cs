@@ -2,6 +2,6 @@
 {
 	public interface INotifier
 	{
-		public Task SendNotification(string message);
+		Task SendNotificationAsync(string message, CancellationToken cancellationToken = default);
 	}
 }
