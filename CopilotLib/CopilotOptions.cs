@@ -25,5 +25,8 @@ namespace CopilotLib
 		/// (public URLs and caller-provided custom tools only).
 		/// </summary>
 		public Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>>? PermissionHandler { get; set; }
+
+		/// <summary>Answers the agent's ask_user questions. When null, the ask_user tool is not available to the agent.</summary>
+		public Func<UserInputRequest, UserInputInvocation, Task<UserInputResponse>>? UserInputHandler { get; set; }
 	}
 }

@@ -196,6 +196,7 @@ namespace CopilotLib
 						Tools = customTools,
 						AvailableTools = availableTools,
 						OnPermissionRequest = deny,
+						OnUserInputRequest = _copilotOptions.UserInputHandler,
 					}, cancellationToken);
 				}
 				catch (Exception ex) when (ex is not OperationCanceledException)
@@ -214,6 +215,7 @@ namespace CopilotLib
 				Tools = customTools,
 				AvailableTools = availableTools,
 				OnPermissionRequest = deny,
+				OnUserInputRequest = _copilotOptions.UserInputHandler,
 			}, cancellationToken);
 		}
 
