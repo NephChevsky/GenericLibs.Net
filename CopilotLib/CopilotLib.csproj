@@ -23,8 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LLMLib\LLMLib.csproj" />
     <PackageReference Include="GitHub.Copilot.SDK" Version="1.0.22" />
+    <PackageReference Include="Neph.GenericLibs.Net.LLMLib" Version="0.1.0" />
   </ItemGroup>
 
   <ItemGroup>
