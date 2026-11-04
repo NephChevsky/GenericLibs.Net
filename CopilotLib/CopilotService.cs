@@ -1,15 +1,16 @@
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
-using CopilotLib.DTO;
 using GitHub.Copilot;
 using GitHub.Copilot.Rpc;
+using LLMLib;
+using LLMLib.DTO;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace CopilotLib
 {
-	public class CopilotService : ICopilotService
+	public class CopilotService : ILLMService
 	{
 		private readonly ILogger<CopilotService> _logger;
 		private readonly CopilotClient _client;

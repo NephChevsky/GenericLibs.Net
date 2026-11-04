@@ -1,20 +1,20 @@
-using CopilotLib.DTO;
+using LLMLib.DTO;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 
-namespace CopilotLib.Controllers
+namespace LLMLib.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public abstract class ChatBotController(ICopilotService copilot) : ControllerBase
+	public abstract class ChatBotController(ILLMService llm) : ControllerBase
 	{
-		protected readonly ICopilotService _copilot = copilot;
+		protected readonly ILLMService _llm = llm;
 
 		/// <summary>Optional system message applied to every conversation.</summary>
 		protected virtual string? SystemMessage => null;
 
-		/// <summary>Optional model override. Falls back to the configured default.</summary>
+		/// <summary>Optional model override. Falls back to the provider's default.</summary>
 		protected virtual string? Model => null;
 
 		/// <summary>Optional custom tools the assistant may call. Evaluated per request, so tools can capture request-scoped state (e.g. the current user).</summary>
@@ -23,20 +23,20 @@ namespace CopilotLib.Controllers
 		[HttpGet("sessions")]
 		public async Task<ActionResult<IReadOnlyList<ChatSessionInfo>>> GetSessions(CancellationToken cancellationToken)
 		{
-			return Ok(await _copilot.GetSessionsAsync(cancellationToken));
+			return Ok(await _llm.GetSessionsAsync(cancellationToken));
 		}
 
 		[HttpGet("sessions/{sessionId}/messages")]
 		public async Task<ActionResult<IReadOnlyList<ChatMessageInfo>>> GetMessages(string sessionId, CancellationToken cancellationToken)
 		{
-			IReadOnlyList<ChatMessageInfo>? messages = await _copilot.GetMessagesAsync(sessionId, cancellationToken);
+			IReadOnlyList<ChatMessageInfo>? messages = await _llm.GetMessagesAsync(sessionId, cancellationToken);
 			return messages is null ? NotFound() : Ok(messages);
 		}
 
 		[HttpDelete("sessions/{sessionId}")]
 		public async Task<IActionResult> DeleteSession(string sessionId, CancellationToken cancellationToken)
 		{
-			return await _copilot.DeleteSessionAsync(sessionId, cancellationToken) ? NoContent() : NotFound();
+			return await _llm.DeleteSessionAsync(sessionId, cancellationToken) ? NoContent() : NotFound();
 		}
 
 		[HttpPost("stream")]
@@ -55,7 +55,7 @@ namespace CopilotLib.Controllers
 			Response.Headers["X-Accel-Buffering"] = "no";
 			Response.ContentType = "text/plain; charset=utf-8";
 
-			await foreach (string chunk in _copilot.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, SystemMessage, Model, sessionId, Tools, request.Attachments, cancellationToken))
+			await foreach (string chunk in _llm.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, SystemMessage, Model, sessionId, Tools, request.Attachments, cancellationToken))
 			{
 				await Response.WriteAsync(chunk, cancellationToken);
 				await Response.Body.FlushAsync(cancellationToken);

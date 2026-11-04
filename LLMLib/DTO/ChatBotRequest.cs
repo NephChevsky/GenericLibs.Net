@@ -1,4 +1,4 @@
-namespace CopilotLib.DTO
+namespace LLMLib.DTO
 {
 	public class ChatBotRequest
 	{

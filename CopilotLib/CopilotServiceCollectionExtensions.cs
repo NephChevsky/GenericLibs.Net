@@ -1,3 +1,4 @@
+using LLMLib;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CopilotLib
@@ -6,7 +7,7 @@ namespace CopilotLib
 	{
 		public static IServiceCollection AddCopilotLib(this IServiceCollection services)
 		{
-			return services.AddSingleton<ICopilotService, CopilotService>();
+			return services.AddSingleton<ILLMService, CopilotService>();
 		}
 	}
 }
