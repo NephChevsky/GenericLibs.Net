@@ -13,25 +13,28 @@ namespace CopilotLib
 	public class CopilotService : ILLMService
 	{
 		private readonly ILogger<CopilotService> _logger;
+		private readonly CopilotOptions _copilotOptions;
 		private readonly CopilotClient _client;
 		private readonly string _defaultModel;
 		private readonly SemaphoreSlim _startLock = new(1, 1);
 		private readonly string _workingDirectory;
 		private bool _started;
 
-		public CopilotService(IConfiguration configuration, ILogger<CopilotService> logger)
+		public CopilotService(IConfiguration configuration, ILogger<CopilotService> logger, CopilotOptions? copilotOptions = null)
 		{
 			_logger = logger;
+			_copilotOptions = copilotOptions ?? new CopilotOptions();
 			_defaultModel = "claude-sonnet5.5";
 
 			string baseDirectory = Path.Combine(AppContext.BaseDirectory, "Copilot");
 			Directory.CreateDirectory(baseDirectory);
 
-			// Empty directory so the runtime does not inherit the host project folder as its working context.
-			_workingDirectory = Path.Combine(baseDirectory, "workspace");
+			// By default an empty directory so the runtime does not inherit the host project folder as its working context.
+			_workingDirectory = _copilotOptions.WorkingDirectory ?? Path.Combine(baseDirectory, "workspace");
 			Directory.CreateDirectory(_workingDirectory);
 
-			CopilotClientOptions options = new() { Logger = logger, Mode = CopilotClientMode.Empty, BaseDirectory = baseDirectory, WorkingDirectory = _workingDirectory };
+			CopilotClientMode mode = _copilotOptions.EnableBuiltInTools ? CopilotClientMode.CopilotCli : CopilotClientMode.Empty;
+			CopilotClientOptions options = new() { Logger = logger, Mode = mode, BaseDirectory = baseDirectory, WorkingDirectory = _workingDirectory };
 			string? token = configuration.GetConnectionString("Copilot");
 			if (!string.IsNullOrWhiteSpace(token))
 			{
@@ -162,17 +165,22 @@ namespace CopilotLib
 
 			List<AIFunctionDeclaration> customTools = tools is null ? [] : [.. tools];
 			HashSet<string> customToolNames = [.. customTools.Select(t => t.Name)];
-			List<string> availableTools = ["web_fetch", .. customToolNames];
+			// Null exposes every built-in tool (only possible when built-in tools are explicitly enabled).
+			List<string>? availableTools = !_copilotOptions.EnableBuiltInTools
+				? ["web_fetch", .. customToolNames]
+				: _copilotOptions.AvailableBuiltInTools is null
+					? null
+					: [.. _copilotOptions.AvailableBuiltInTools.Union(customToolNames)];
 
 			SystemMessageConfig? system = string.IsNullOrWhiteSpace(systemMessage)
 				? null
 				: new SystemMessageConfig { Mode = SystemMessageMode.Append, Content = systemMessage };
 
 			// Text generation with web browsing only: no file or shell access.
-			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = (request, invocation) =>
+			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = _copilotOptions.PermissionHandler ?? ((request, invocation) =>
 				(request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)) || (request is PermissionRequestCustomTool custom && customToolNames.Contains(custom.ToolName))
 					? PermissionHandler.ApproveAll(request, invocation)
-					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed"));
+					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed")));
 
 			if (!string.IsNullOrWhiteSpace(sessionId))
 			{
