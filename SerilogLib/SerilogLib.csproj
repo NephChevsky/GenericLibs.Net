@@ -8,7 +8,7 @@
 
   <PropertyGroup>
     <PackageId>Neph.GenericLibs.Net.SerilogLib</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Neph</Authors>
     <Description>Serilog host builder extension configuring console and rolling file logging.</Description>
     <PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
