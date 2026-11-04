@@ -199,7 +199,7 @@ namespace CopilotLib
 						OnUserInputRequest = _copilotOptions.UserInputHandler,
 					}, cancellationToken);
 				}
-				catch (Exception ex) when (ex is not OperationCanceledException)
+				catch (IOException ex) when (ex.InnerException is RemoteRpcException)
 				{
 					_logger.LogWarning(ex, "Failed to resume Copilot session {SessionId}, creating a new one", sessionId);
 				}
