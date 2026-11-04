@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using GitHub.Copilot;
@@ -18,7 +19,8 @@ namespace CopilotLib
 		private readonly string _defaultModel;
 		private readonly SemaphoreSlim _startLock = new(1, 1);
 		private readonly string _workingDirectory;
-		private bool _started;
+		private readonly ConcurrentDictionary<string, SemaphoreSlim> _sessionLocks = new();
+		private volatile bool _started;
 
 		public CopilotService(IConfiguration configuration, ILogger<CopilotService> logger, CopilotOptions? copilotOptions = null)
 		{
@@ -45,6 +47,28 @@ namespace CopilotLib
 		}
 
 		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, IReadOnlyList<ChatAttachment>? attachments = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		{
+			// Different sessions run in parallel; requests on the same session are serialized.
+			SemaphoreSlim? sessionLock = string.IsNullOrWhiteSpace(sessionId) ? null : _sessionLocks.GetOrAdd(sessionId, _ => new SemaphoreSlim(1, 1));
+			if (sessionLock is not null)
+			{
+				await sessionLock.WaitAsync(cancellationToken);
+			}
+
+			try
+			{
+				await foreach (string chunk in AskStreamingCoreAsync(prompt, systemMessage, model, sessionId, tools, attachments, cancellationToken))
+				{
+					yield return chunk;
+				}
+			}
+			finally
+			{
+				sessionLock?.Release();
+			}
+		}
+
+		private async IAsyncEnumerable<string> AskStreamingCoreAsync(string prompt, string? systemMessage, string? model, string? sessionId, IReadOnlyList<AIFunction>? tools, IReadOnlyList<ChatAttachment>? attachments, [EnumeratorCancellation] CancellationToken cancellationToken)
 		{
 			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, true, tools, cancellationToken);
 
