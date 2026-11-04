@@ -9,7 +9,7 @@
 
 	<PropertyGroup>
 		<PackageId>Neph.GenericLibs.Net.DiscordLib</PackageId>
-		<Version>0.1.1</Version>
+		<Version>0.2.0</Version>
 		<Authors>Neph</Authors>
 		<Description>Generic Discord client helpers and service registration extensions for ASP.NET Core applications.</Description>
 		<PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
@@ -21,8 +21,9 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
-		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" Version="0.1.0" />
+		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" Version="0.2.0" />
 	</ItemGroup>
 
 </Project>

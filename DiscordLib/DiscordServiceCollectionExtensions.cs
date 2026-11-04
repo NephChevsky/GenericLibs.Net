@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NotifierLib;
 
 namespace DiscordLib
@@ -7,12 +8,15 @@ namespace DiscordLib
 	{
 		public static IServiceCollection AddDiscordLib(this IServiceCollection services)
 		{
-			return services.AddSingleton<Discord>(); ;
+			services.AddHttpClient();
+			services.TryAddSingleton<Discord>();
+			return services;
 		}
 
 		public static IServiceCollection AddDiscordNotifierLib(this IServiceCollection services)
 		{
-			return services.AddSingleton<INotifier, Discord>();
+			services.AddDiscordLib();
+			return services.AddSingleton<INotifier>(sp => sp.GetRequiredService<Discord>());
 		}
 	}
 }
