@@ -171,7 +171,7 @@ namespace JwtLib.Controllers
 			}
 
 			_loggingTries.Add(DateTime.Now);
-			await _notifier.SendNotification($"⚠️ Failed login attempt for user **{request.Username}**");
+			await _notifier.SendNotificationAsync($"⚠️ Failed login attempt for user **{request.Username}**");
 
 			_logger.LogError("{User} failed to log in", request.Username);
 			return Unauthorized();

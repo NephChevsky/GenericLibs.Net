@@ -9,7 +9,7 @@
 
 	<PropertyGroup>
 		<PackageId>Neph.GenericLibs.Net.JwtLib</PackageId>
-		<Version>0.1.8</Version>
+		<Version>0.2.0</Version>
 		<Authors>Neph</Authors>
 		<Description>Generic JWT authentication helpers, controllers and service registration extensions for ASP.NET Core applications.</Description>
 		<PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>
@@ -21,7 +21,7 @@
 	<ItemGroup>
 		<PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
-		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" Version="0.1.0" />
+		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" Version="0.2.0" />
 		<PackageReference Include="Neph.GenericLibs.Net.PostgresLib" Version="0.1.2" />
 		<PackageReference Include="Neph.GenericLibs.Net.JwtLib.Contracts" Version="0.1.1" />
 	</ItemGroup>
