@@ -225,7 +225,7 @@ namespace CopilotLib
 				}
 				catch (IOException ex) when (ex.InnerException is RemoteRpcException)
 				{
-					_logger.LogWarning(ex, "Failed to resume Copilot session {SessionId}, creating a new one", sessionId);
+					_logger.LogWarning("Failed to resume Copilot session {SessionId}, creating a new one", sessionId);
 				}
 			}
 
