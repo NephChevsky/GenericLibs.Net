@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using GitHub.Copilot;
@@ -19,7 +18,6 @@ namespace CopilotLib
 		private readonly string _defaultModel;
 		private readonly SemaphoreSlim _startLock = new(1, 1);
 		private readonly string _workingDirectory;
-		private readonly ConcurrentDictionary<string, SemaphoreSlim> _sessionLocks = new();
 		private volatile bool _started;
 
 		public CopilotService(IConfiguration configuration, ILogger<CopilotService> logger, CopilotOptions? copilotOptions = null)
@@ -46,61 +44,39 @@ namespace CopilotLib
 			_client = new CopilotClient(options);
 		}
 
-		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, string? systemMessage = null, string? model = null, string? sessionId = null, IReadOnlyList<AIFunction>? tools = null, IReadOnlyList<ChatAttachment>? attachments = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		public async Task<ILLMSession?> OpenSessionAsync(string sessionId, LLMSessionOptions? options = null, CancellationToken cancellationToken = default)
 		{
-			// Different sessions run in parallel; requests on the same session are serialized.
-			SemaphoreSlim? sessionLock = string.IsNullOrWhiteSpace(sessionId) ? null : _sessionLocks.GetOrAdd(sessionId, _ => new SemaphoreSlim(1, 1));
-			if (sessionLock is not null)
+			await EnsureStartedAsync(cancellationToken);
+			IList<SessionMetadata> known = await _client.ListSessionsAsync(cancellationToken: cancellationToken);
+			if (!known.Any(s => s.SessionId == sessionId))
 			{
-				await sessionLock.WaitAsync(cancellationToken);
+				return null;
 			}
 
-			try
-			{
-				await foreach (string chunk in AskStreamingCoreAsync(prompt, systemMessage, model, sessionId, tools, attachments, cancellationToken))
-				{
-					yield return chunk;
-				}
-			}
-			finally
-			{
-				sessionLock?.Release();
-			}
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, sessionId, true, options?.Tools, false, cancellationToken);
+			return new CopilotLLMSession(session, sessionId);
 		}
 
-		private async IAsyncEnumerable<string> AskStreamingCoreAsync(string prompt, string? systemMessage, string? model, string? sessionId, IReadOnlyList<AIFunction>? tools, IReadOnlyList<ChatAttachment>? attachments, [EnumeratorCancellation] CancellationToken cancellationToken)
+		public async Task<ILLMSession> CreateSessionAsync(LLMSessionOptions? options = null, CancellationToken cancellationToken = default)
 		{
-			await using CopilotSession session = await GetSessionAsync(systemMessage, model, sessionId, true, tools, cancellationToken);
+			string sessionId = Guid.NewGuid().ToString();
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, sessionId, true, options?.Tools, true, cancellationToken);
+			_logger.LogInformation("Created Copilot session {SessionId}", sessionId);
+			return new CopilotLLMSession(session, sessionId);
+		}
 
-			Channel<string> channel = Channel.CreateUnbounded<string>();
-			using IDisposable subscription = session.On<SessionEvent>(evt =>
+		public async Task<bool> DeleteSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+		{
+			await EnsureStartedAsync(cancellationToken);
+			IList<SessionMetadata> sessions = await _client.ListSessionsAsync(cancellationToken: cancellationToken);
+			if (!sessions.Any(s => s.SessionId == sessionId))
 			{
-				switch (evt)
-				{
-					case AssistantMessageDeltaEvent delta:
-						channel.Writer.TryWrite(delta.Data.DeltaContent);
-						break;
-					case SessionErrorEvent error:
-						channel.Writer.TryComplete(new InvalidOperationException(error.Data.Message));
-						break;
-					case SessionIdleEvent:
-						channel.Writer.TryComplete();
-						break;
-				}
-			});
-
-			MessageOptions options = new() { Prompt = prompt };
-			if (attachments is { Count: > 0 })
-			{
-				options.Attachments = [.. attachments.Select(a => (Attachment)new AttachmentBlob { Data = a.Data, MimeType = a.MimeType, DisplayName = a.Name })];
+				return false;
 			}
 
-			await session.SendAsync(options, cancellationToken);
-
-			await foreach (string chunk in channel.Reader.ReadAllAsync(cancellationToken))
-			{
-				yield return chunk;
-			}
+			await _client.DeleteSessionAsync(sessionId);
+			_logger.LogInformation("Deleted Copilot session {SessionId}", sessionId);
+			return true;
 		}
 
 		public async Task<IReadOnlyList<ChatSessionInfo>> GetSessionsAsync(CancellationToken cancellationToken = default)
@@ -122,68 +98,7 @@ namespace CopilotLib
 			return result;
 		}
 
-		public async Task<bool> DeleteSessionAsync(string sessionId, CancellationToken cancellationToken = default)
-		{
-			await EnsureStartedAsync(cancellationToken);
-			IList<SessionMetadata> sessions = await _client.ListSessionsAsync();
-			if (!sessions.Any(s => s.SessionId == sessionId))
-			{
-				return false;
-			}
-
-			await _client.DeleteSessionAsync(sessionId);
-			_logger.LogInformation("Deleted Copilot session {SessionId}", sessionId);
-			return true;
-		}
-
-		public async Task<IReadOnlyList<ChatMessageInfo>?> GetMessagesAsync(string sessionId, CancellationToken cancellationToken = default)
-		{
-			await EnsureStartedAsync(cancellationToken);
-
-			await using CopilotSession session = await GetSessionAsync(null, null, sessionId, false, null, cancellationToken);
-
-			if (session == null)
-			{
-				return null;
-			}
-
-			IReadOnlyList<SessionEvent> events = await session.GetEventsAsync(cancellationToken);
-
-			Dictionary<string, SessionBinaryAssetData> assets = events.OfType<SessionBinaryAssetEvent>().GroupBy(e => e.Data.AssetId).ToDictionary(g => g.Key, g => g.First().Data);
-
-			List<ChatMessageInfo> messages = [];
-			foreach (SessionEvent evt in events)
-			{
-				switch (evt)
-				{
-					case UserMessageEvent user:
-						ChatMessageInfo userMessage = new() { Role = "user", Content = user.Data.Content, Timestamp = user.Timestamp };
-						foreach (AttachmentBlob blob in (user.Data.Attachments ?? []).OfType<AttachmentBlob>())
-						{
-							string? data = blob.Data;
-							if (string.IsNullOrEmpty(data) && blob.AssetId is not null && assets.TryGetValue(blob.AssetId, out SessionBinaryAssetData? asset))
-							{
-								data = asset.Data;
-							}
-
-							if (!string.IsNullOrEmpty(data))
-							{
-								userMessage.Attachments.Add(new ChatAttachment { Name = blob.DisplayName ?? string.Empty, MimeType = blob.MimeType ?? "application/octet-stream", Data = data });
-							}
-						}
-
-						messages.Add(userMessage);
-						break;
-					case AssistantMessageEvent assistant when !string.IsNullOrEmpty(assistant.Data.Content):
-						messages.Add(new ChatMessageInfo { Role = "assistant", Content = assistant.Data.Content, Timestamp = assistant.Timestamp });
-						break;
-				}
-			}
-
-			return messages;
-		}
-
-		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, CancellationToken cancellationToken)
+		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, bool create, CancellationToken cancellationToken)
 		{
 			await EnsureStartedAsync(cancellationToken);
 
@@ -216,32 +131,25 @@ namespace CopilotLib
 				};
 			}
 
-			if (!string.IsNullOrWhiteSpace(sessionId))
+			if (!create)
 			{
-				try
+				_logger.LogInformation("Resuming Copilot session {SessionId}", sessionId);
+				return await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
 				{
-					_logger.LogInformation("Resuming Copilot session {SessionId}", sessionId);
-					return await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
-					{
-						Model = model ?? _defaultModel,
-						Streaming = streaming,
-						SystemMessage = system,
-						WorkingDirectory = _workingDirectory,
-						Tools = customTools,
-						AvailableTools = availableTools,
-						OnPermissionRequest = deny,
-						OnUserInputRequest = userInput,
-					}, cancellationToken);
-				}
-				catch (IOException ex) when (ex.InnerException is RemoteRpcException)
-				{
-					_logger.LogWarning("Failed to resume Copilot session {SessionId}, creating a new one", sessionId);
-				}
+					Model = model ?? _defaultModel,
+					Streaming = streaming,
+					SystemMessage = system,
+					WorkingDirectory = _workingDirectory,
+					Tools = customTools,
+					AvailableTools = availableTools,
+					OnPermissionRequest = deny,
+					OnUserInputRequest = userInput,
+				}, cancellationToken);
 			}
 
 			return await _client.CreateSessionAsync(new SessionConfig
 			{
-				SessionId = string.IsNullOrWhiteSpace(sessionId) ? null : sessionId,
+				SessionId = sessionId,
 				Model = model ?? _defaultModel,
 				Streaming = streaming,
 				SystemMessage = system,

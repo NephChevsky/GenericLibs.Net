@@ -8,7 +8,7 @@
 
 	<PropertyGroup>
 		<PackageId>Neph.GenericLibs.Net.LLMLib</PackageId>
-		<Version>0.1.0</Version>
+		<Version>0.2.0</Version>
 		<Authors>Neph</Authors>
 		<Description>Generic LLM chat abstractions (service interface, DTOs and a reusable ASP.NET Core chatbot controller) independent of the underlying provider.</Description>
 		<PackageProjectUrl>https://github.com/NephChevsky/GenericLibs.Net</PackageProjectUrl>

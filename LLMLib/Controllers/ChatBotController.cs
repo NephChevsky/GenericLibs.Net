@@ -29,8 +29,13 @@ namespace LLMLib.Controllers
 		[HttpGet("sessions/{sessionId}/messages")]
 		public async Task<ActionResult<IReadOnlyList<ChatMessageInfo>>> GetMessages(string sessionId, CancellationToken cancellationToken)
 		{
-			IReadOnlyList<ChatMessageInfo>? messages = await _llm.GetMessagesAsync(sessionId, cancellationToken);
-			return messages is null ? NotFound() : Ok(messages);
+			await using ILLMSession? session = await _llm.OpenSessionAsync(sessionId, cancellationToken: cancellationToken);
+			if (session is null)
+			{
+				return NotFound();
+			}
+
+			return Ok(await session.GetMessagesAsync(cancellationToken));
 		}
 
 		[HttpDelete("sessions/{sessionId}")]
@@ -49,13 +54,30 @@ namespace LLMLib.Controllers
 				return;
 			}
 
-			string sessionId = string.IsNullOrWhiteSpace(request.SessionId) ? Guid.NewGuid().ToString() : request.SessionId;
-			Response.Headers["X-Session-Id"] = sessionId;
+			LLMSessionOptions options = new() { SystemMessage = SystemMessage, Model = Model, Tools = Tools };
+			ILLMSession? session;
+			if (string.IsNullOrWhiteSpace(request.SessionId))
+			{
+				session = await _llm.CreateSessionAsync(options, cancellationToken);
+			}
+			else
+			{
+				session = await _llm.OpenSessionAsync(request.SessionId, options, cancellationToken);
+				if (session is null)
+				{
+					Response.StatusCode = StatusCodes.Status404NotFound;
+					return;
+				}
+			}
+
+			await using ILLMSession _ = session;
+
+			Response.Headers["X-Session-Id"] = session.SessionId;
 			Response.Headers["Access-Control-Expose-Headers"] = "X-Session-Id";
 			Response.Headers["X-Accel-Buffering"] = "no";
 			Response.ContentType = "text/plain; charset=utf-8";
 
-			await foreach (string chunk in _llm.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, SystemMessage, Model, sessionId, Tools, request.Attachments, cancellationToken))
+			await foreach (string chunk in session.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, request.Attachments, cancellationToken))
 			{
 				await Response.WriteAsync(chunk, cancellationToken);
 				await Response.Body.FlushAsync(cancellationToken);
