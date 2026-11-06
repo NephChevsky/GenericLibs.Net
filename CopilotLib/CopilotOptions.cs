@@ -1,6 +1,3 @@
-using GitHub.Copilot;
-using GitHub.Copilot.Rpc;
-
 namespace CopilotLib
 {
 	public class CopilotOptions
@@ -21,12 +18,18 @@ namespace CopilotLib
 		public string? WorkingDirectory { get; set; }
 
 		/// <summary>
-		/// Decides every permission request made by the agent. When null, the restrictive default is used
+		/// When true, every permission request made by the agent is approved. When false (default), the restrictive default is used
 		/// (public URLs and caller-provided custom tools only).
 		/// </summary>
-		public Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>>? PermissionHandler { get; set; }
+		public bool ApproveAllPermissions { get; set; }
 
 		/// <summary>Answers the agent's ask_user questions. When null, the ask_user tool is not available to the agent.</summary>
-		public Func<UserInputRequest, UserInputInvocation, Task<UserInputResponse>>? UserInputHandler { get; set; }
+		public Func<UserInputQuestion, Task<UserInputAnswer>>? UserInputHandler { get; set; }
 	}
+
+	/// <summary>A question the agent asks the user.</summary>
+	public sealed record UserInputQuestion(string Question, IReadOnlyList<string> Choices, bool AllowFreeform);
+
+	/// <summary>The user's answer to a <see cref="UserInputQuestion"/>.</summary>
+	public sealed record UserInputAnswer(string Answer, bool WasFreeform);
 }

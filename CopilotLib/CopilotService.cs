@@ -201,10 +201,20 @@ namespace CopilotLib
 				: new SystemMessageConfig { Mode = SystemMessageMode.Append, Content = systemMessage };
 
 			// Text generation with web browsing only: no file or shell access.
-			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = _copilotOptions.PermissionHandler ?? ((request, invocation) =>
+			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = _copilotOptions.ApproveAllPermissions ? PermissionHandler.ApproveAll : ((request, invocation) =>
 				(request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)) || (request is PermissionRequestCustomTool custom && customToolNames.Contains(custom.ToolName))
 					? PermissionHandler.ApproveAll(request, invocation)
 					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed")));
+
+			Func<UserInputRequest, UserInputInvocation, Task<UserInputResponse>>? userInput = null;
+			if (_copilotOptions.UserInputHandler is { } handler)
+			{
+				userInput = async (request, _) =>
+				{
+					UserInputAnswer answer = await handler(new UserInputQuestion(request.Question, request.Choices is { Count: > 0 } ? [.. request.Choices] : [], request.AllowFreeform ?? true));
+					return new UserInputResponse { Answer = answer.Answer, WasFreeform = answer.WasFreeform };
+				};
+			}
 
 			if (!string.IsNullOrWhiteSpace(sessionId))
 			{
@@ -220,7 +230,7 @@ namespace CopilotLib
 						Tools = customTools,
 						AvailableTools = availableTools,
 						OnPermissionRequest = deny,
-						OnUserInputRequest = _copilotOptions.UserInputHandler,
+						OnUserInputRequest = userInput,
 					}, cancellationToken);
 				}
 				catch (IOException ex) when (ex.InnerException is RemoteRpcException)
@@ -239,7 +249,7 @@ namespace CopilotLib
 				Tools = customTools,
 				AvailableTools = availableTools,
 				OnPermissionRequest = deny,
-				OnUserInputRequest = _copilotOptions.UserInputHandler,
+				OnUserInputRequest = userInput,
 			}, cancellationToken);
 		}
 
