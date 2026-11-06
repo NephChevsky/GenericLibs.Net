@@ -53,14 +53,14 @@ namespace CopilotLib
 				return null;
 			}
 
-			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, sessionId, true, options?.Tools, false, cancellationToken);
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, false, cancellationToken);
 			return new CopilotLLMSession(session, sessionId);
 		}
 
 		public async Task<ILLMSession> CreateSessionAsync(LLMSessionOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			string sessionId = Guid.NewGuid().ToString();
-			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, sessionId, true, options?.Tools, true, cancellationToken);
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, true, cancellationToken);
 			_logger.LogInformation("Created Copilot session {SessionId}", sessionId);
 			return new CopilotLLMSession(session, sessionId);
 		}
@@ -98,7 +98,7 @@ namespace CopilotLib
 			return result;
 		}
 
-		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, bool create, CancellationToken cancellationToken)
+		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? reasoningEffort, string sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, bool create, CancellationToken cancellationToken)
 		{
 			await EnsureStartedAsync(cancellationToken);
 
@@ -137,6 +137,7 @@ namespace CopilotLib
 				return await _client.ResumeSessionAsync(sessionId, new ResumeSessionConfig
 				{
 					Model = model ?? _defaultModel,
+					ReasoningEffort = reasoningEffort,
 					Streaming = streaming,
 					SystemMessage = system,
 					WorkingDirectory = _workingDirectory,
@@ -151,6 +152,7 @@ namespace CopilotLib
 			{
 				SessionId = sessionId,
 				Model = model ?? _defaultModel,
+				ReasoningEffort = reasoningEffort,
 				Streaming = streaming,
 				SystemMessage = system,
 				WorkingDirectory = _workingDirectory,

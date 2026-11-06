@@ -7,6 +7,9 @@ namespace LLMLib
 	{
 		public string? SystemMessage { get; init; }
 		public string? Model { get; init; }
+
+		/// <summary>Reasoning effort requested from the model (e.g. "low", "medium", "high"). Provider default when null.</summary>
+		public string? ReasoningEffort { get; init; }
 		public IReadOnlyList<AIFunction>? Tools { get; init; }
 	}
 
