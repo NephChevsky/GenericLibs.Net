@@ -1,4 +1,4 @@
-namespace PostgresLib.Interfaces
+namespace DatabaseLib.Interfaces
 {
     public interface ISoftDeletable
     {

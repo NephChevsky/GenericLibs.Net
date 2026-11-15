@@ -1,10 +1,10 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using PostgresLib.Interfaces;
+using DatabaseLib.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Expressions;
 
-namespace PostgresLib
+namespace DatabaseLib
 {
 	public class GenericDbContext<TContext>(DbContextOptions<TContext> options, IHttpContextAccessor? httpContextAccessor = null) : DbContext(options) where TContext : DbContext
 	{

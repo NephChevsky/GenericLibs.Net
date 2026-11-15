@@ -1,5 +1,7 @@
 <Solution>
+  <Project Path="AzureSqlLib/AzureSqlLib.csproj" />
   <Project Path="CopilotLib/CopilotLib.csproj" Id="93b92885-fcba-4591-9e06-62b915519573" />
+  <Project Path="DatabaseLib/DatabaseLib.csproj" />
   <Project Path="DiscordLib/DiscordLib.csproj" Id="4c8f7e9b-94ac-4f8f-a3bc-e1b465d21534" />
   <Project Path="HangFireLib/HangFireLib.csproj" Id="e1872b93-fcec-4f77-b510-056dba887e7b" />
   <Project Path="JwtLib.Contracts/JwtLib.Contracts.csproj" />
