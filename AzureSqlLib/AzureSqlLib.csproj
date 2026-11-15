@@ -17,8 +17,8 @@
     <PackageTags>azure;sql;sqlserver;efcore;entityframework;dotnet;neph;genericlibs.net</PackageTags>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" Version="0.1.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
+    <PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
   </ItemGroup>
 
 </Project>

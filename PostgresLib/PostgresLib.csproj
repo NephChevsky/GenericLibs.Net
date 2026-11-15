@@ -17,9 +17,9 @@
     <PackageTags>postgres;postgresql;efcore;entityframework;dotnet;neph;genericlibs.net</PackageTags>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" Version="0.1.0" />
-    <PackageReference Include="EFCore.NamingConventions" Version="10.0.1" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" />
+    <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
 </Project>

@@ -19,11 +19,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
-		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" Version="0.2.0" />
-		<PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" Version="0.1.0" />
-		<PackageReference Include="Neph.GenericLibs.Net.JwtLib.Contracts" Version="0.1.1" />
+		<PackageReference Include="BCrypt.Net-Next" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+		<PackageReference Include="Neph.GenericLibs.Net.NotifierLib" />
+		<PackageReference Include="Neph.GenericLibs.Net.DatabaseLib" />
+		<PackageReference Include="Neph.GenericLibs.Net.JwtLib.Contracts" />
 	</ItemGroup>
 
 </Project>
