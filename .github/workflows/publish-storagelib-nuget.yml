@@ -19,10 +19,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore StorageLib/StorageLib.csproj
+        run: dotnet restore Storages/StorageLib/StorageLib.csproj
 
       - name: Pack
-        run: dotnet pack StorageLib/StorageLib.csproj -c Release -o ./nupkg
+        run: dotnet pack Storages/StorageLib/StorageLib.csproj -c Release -o ./nupkg
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)

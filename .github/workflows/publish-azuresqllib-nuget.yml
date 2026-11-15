@@ -19,10 +19,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore AzureSqlLib/AzureSqlLib.csproj
+        run: dotnet restore Databases/AzureSqlLib/AzureSqlLib.csproj
 
       - name: Pack
-        run: dotnet pack AzureSqlLib/AzureSqlLib.csproj -c Release -o ./nupkg
+        run: dotnet pack Databases/AzureSqlLib/AzureSqlLib.csproj -c Release -o ./nupkg
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)

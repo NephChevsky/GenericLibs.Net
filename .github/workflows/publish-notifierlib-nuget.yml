@@ -19,10 +19,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore NotifierLib/NotifierLib.csproj
+        run: dotnet restore Notifiers/NotifierLib/NotifierLib.csproj
 
       - name: Pack
-        run: dotnet pack NotifierLib/NotifierLib.csproj -c Release -o ./nupkg
+        run: dotnet pack Notifiers/NotifierLib/NotifierLib.csproj -c Release -o ./nupkg
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)

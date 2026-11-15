@@ -19,10 +19,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore CopilotLib/CopilotLib.csproj
+        run: dotnet restore LLMs/CopilotLib/CopilotLib.csproj
 
       - name: Pack
-        run: dotnet pack CopilotLib/CopilotLib.csproj -c Release -o ./nupkg
+        run: dotnet pack LLMs/CopilotLib/CopilotLib.csproj -c Release -o ./nupkg
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)

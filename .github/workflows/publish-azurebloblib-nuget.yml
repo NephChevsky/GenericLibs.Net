@@ -19,10 +19,10 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore AzureBlobLib/AzureBlobLib.csproj
+        run: dotnet restore Storages/AzureBlobLib/AzureBlobLib.csproj
 
       - name: Pack
-        run: dotnet pack AzureBlobLib/AzureBlobLib.csproj -c Release -o ./nupkg
+        run: dotnet pack Storages/AzureBlobLib/AzureBlobLib.csproj -c Release -o ./nupkg
 
       # Get a short-lived NuGet API key
       - name: NuGet login (OIDC → temp API key)
