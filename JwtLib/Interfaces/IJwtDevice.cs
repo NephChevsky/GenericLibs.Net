@@ -6,6 +6,6 @@ namespace JwtLib.Interfaces
 		string Name { get; set; }
 		Guid OwnerId { get; set; }
 		string RefreshToken { get; set; }
-		DateTime? RefreshTokenExpiresAt { get; set; }
+		DateTime RefreshTokenExpiresAt { get; set; }
 	}
 }

@@ -121,7 +121,7 @@ namespace JwtLib.Controllers
 
 			DateTime now = DateTime.UtcNow;
 			List<TDevice> expiredDevices = Devices
-				.Where(d => d.OwnerId == user.Id && (d.RefreshTokenExpiresAt == null || d.RefreshTokenExpiresAt < now))
+				.Where(d => d.OwnerId == user.Id && d.RefreshTokenExpiresAt < now)
 				.ToList();
 			if (device != null)
 			{
@@ -522,7 +522,7 @@ namespace JwtLib.Controllers
 					return Unauthorized("Invalid refresh token.");
 				}
 
-				if (dbDevice.RefreshTokenExpiresAt == null || dbDevice.RefreshTokenExpiresAt < DateTime.UtcNow)
+				if (dbDevice.RefreshTokenExpiresAt < DateTime.UtcNow)
 				{
 					_logger.LogWarning("Refresh denied: refresh token expired for device {DeviceId}", dbDevice.Id);
 					return Unauthorized("Refresh token expired.");
@@ -537,7 +537,7 @@ namespace JwtLib.Controllers
 
 				(string accessToken, refreshToken) = GenerateTokens(dbUser.Id, dbUser.Role);
 
-				if (dbDevice.RefreshTokenExpiresAt != null && dbDevice.RefreshTokenExpiresAt < DateTime.UtcNow.AddDays(6))
+				if (dbDevice.RefreshTokenExpiresAt < DateTime.UtcNow.AddDays(6))
 				{
 					dbDevice.RefreshToken = ComputeSha256(refreshToken);
 					dbDevice.RefreshTokenExpiresAt = DateTime.UtcNow.Add(TimeSpan.FromDays(7));
