@@ -4,6 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="GitHub.Copilot.SDK" Version="1.0.22" />
@@ -26,6 +27,7 @@
     <PackageVersion Include="Neph.GenericLibs.Net.JwtLib.Contracts" Version="0.1.1" />
     <PackageVersion Include="Neph.GenericLibs.Net.LLMLib" Version="0.2.0" />
     <PackageVersion Include="Neph.GenericLibs.Net.NotifierLib" Version="0.2.0" />
+    <PackageVersion Include="Neph.GenericLibs.Net.StorageLib" Version="0.1.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="OpenAI" Version="2.7.0" />

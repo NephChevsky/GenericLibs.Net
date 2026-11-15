@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="AzureBlobLib/AzureBlobLib.csproj" />
   <Project Path="AzureSqlLib/AzureSqlLib.csproj" />
   <Project Path="CopilotLib/CopilotLib.csproj" Id="93b92885-fcba-4591-9e06-62b915519573" />
   <Project Path="DatabaseLib/DatabaseLib.csproj" />
@@ -14,4 +15,5 @@
   <Project Path="RedisLib/RedisLib.csproj" Id="3375817a-34b6-4a5b-baa7-8a07fa8170ff" />
   <Project Path="SerilogLib/SerilogLib.csproj" Id="f7052423-3b73-436f-ad6e-695710c05bbd" />
   <Project Path="SshLib/SshLib.csproj" />
+  <Project Path="StorageLib/StorageLib.csproj" />
 </Solution>
