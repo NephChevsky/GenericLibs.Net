@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -37,6 +38,7 @@ namespace JwtLib
 			});
 
 			services.AddAuthorization();
+			services.TryAddSingleton<ILoginThrottle, LoginThrottle>();
 
 			return services;
 		}

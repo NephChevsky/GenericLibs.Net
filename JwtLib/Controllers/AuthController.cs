@@ -18,7 +18,7 @@ namespace JwtLib.Controllers
 {
 	[ApiController]
 	[Route("api/[controller]")]
-	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier, IHostEnvironment environment, DbSet<TUser> users, DbSet<TDevice> devices) : ControllerBase
+	public abstract class AuthController<TDbContext, TUser, TDevice>(ILogger logger, TDbContext db, IConfiguration configuration, INotifier notifier, IHostEnvironment environment, DbSet<TUser> users, DbSet<TDevice> devices, ILoginThrottle throttle) : ControllerBase
 		where TDbContext : DbContext
 		where TUser : class, IJwtUser, new()
 		where TDevice : class, IJwtDevice, new()
@@ -29,7 +29,21 @@ namespace JwtLib.Controllers
 		protected readonly INotifier _notifier = notifier;
 		protected readonly IHostEnvironment _environment = environment;
 
-		private static readonly List<DateTime> _loggingTries = [];
+		protected readonly ILoginThrottle Throttle = throttle;
+
+		private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+		/// <summary>Returns a 429 result (with Retry-After) when the account or the client address has too many recent failures.</summary>
+		private IActionResult? RejectIfThrottled(string? username)
+		{
+			if (!Throttle.IsBlocked(username, ClientIp, out TimeSpan retryAfter))
+			{
+				return null;
+			}
+
+			Response.Headers.RetryAfter = ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+			return StatusCode(429, "Too many requests. Please try again later.");
+		}
 
 		protected readonly DbSet<TUser> Users = users;
 		protected readonly DbSet<TDevice> Devices = devices;
@@ -142,12 +156,11 @@ namespace JwtLib.Controllers
 		{
 			_logger.LogInformation("Login endpoint was called");
 
-			_loggingTries.RemoveAll(x => x < DateTime.Now.AddMinutes(-5));
-
-			if (_loggingTries.Count > 5)
+			IActionResult? throttled = RejectIfThrottled(request.Username);
+			if (throttled != null)
 			{
-				_logger.LogError("Delaying {User} for too many connection attempts", request.Username);
-				return StatusCode(429, "Too many requests. Please try again later.");
+				_logger.LogWarning("Throttling login for {User}: too many failed attempts", request.Username);
+				return throttled;
 			}
 
 			try
@@ -158,6 +171,7 @@ namespace JwtLib.Controllers
 					if (BCrypt.Net.BCrypt.Verify(request.Password, dbUser.PasswordHash))
 					{
 						AuthLoginResponse session = await IssueSessionAsync(dbUser);
+						Throttle.RecordSuccess(request.Username);
 
 						_logger.LogInformation("{User} logged successfully", request.Username);
 						return Ok(session);
@@ -170,7 +184,7 @@ namespace JwtLib.Controllers
 				return StatusCode(503, "Failed to reach database");
 			}
 
-			_loggingTries.Add(DateTime.Now);
+			Throttle.RecordFailure(request.Username, ClientIp);
 			await _notifier.SendNotificationAsync($"⚠️ Failed login attempt for user **{request.Username}**");
 
 			_logger.LogError("{User} failed to log in", request.Username);
@@ -220,6 +234,12 @@ namespace JwtLib.Controllers
 		[HttpPost("guest/redeem")]
 		public async Task<IActionResult> RedeemGuest([FromBody] AuthRedeemGuestRequest request)
 		{
+			IActionResult? throttled = RejectIfThrottled(null);
+			if (throttled != null)
+			{
+				return throttled;
+			}
+
 			string decoded;
 			try
 			{
@@ -227,12 +247,14 @@ namespace JwtLib.Controllers
 			}
 			catch (FormatException)
 			{
+				Throttle.RecordFailure(null, ClientIp);
 				return Unauthorized("Invalid recovery code.");
 			}
 
 			int separatorIndex = decoded.IndexOf(':');
 			if (separatorIndex <= 0 || !Guid.TryParse(decoded[..separatorIndex], out Guid userId))
 			{
+				Throttle.RecordFailure(null, ClientIp);
 				return Unauthorized("Invalid recovery code.");
 			}
 
@@ -244,6 +266,7 @@ namespace JwtLib.Controllers
 				if (dbUser == null || !BCrypt.Net.BCrypt.Verify(secret, dbUser.PasswordHash))
 				{
 					_logger.LogWarning("Failed guest recovery attempt for user {UserId}", userId);
+					Throttle.RecordFailure(null, ClientIp);
 					return Unauthorized("Invalid recovery code.");
 				}
 
