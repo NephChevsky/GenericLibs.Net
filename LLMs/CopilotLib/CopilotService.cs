@@ -53,14 +53,14 @@ namespace CopilotLib
 				return null;
 			}
 
-			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, false, cancellationToken);
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, options?.RestrictToCustomTools ?? false, false, cancellationToken);
 			return new CopilotLLMSession(session, sessionId);
 		}
 
 		public async Task<ILLMSession> CreateSessionAsync(LLMSessionOptions? options = null, CancellationToken cancellationToken = default)
 		{
 			string sessionId = Guid.NewGuid().ToString();
-			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, true, cancellationToken);
+			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, options?.RestrictToCustomTools ?? false, true, cancellationToken);
 			_logger.LogInformation("Created Copilot session {SessionId}", sessionId);
 			return new CopilotLLMSession(session, sessionId);
 		}
@@ -98,14 +98,15 @@ namespace CopilotLib
 			return result;
 		}
 
-		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? reasoningEffort, string sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, bool create, CancellationToken cancellationToken)
+		private async Task<CopilotSession> GetSessionAsync(string? systemMessage, string? model, string? reasoningEffort, string sessionId, bool streaming, IReadOnlyList<AIFunction>? tools, bool restrictToCustomTools, bool create, CancellationToken cancellationToken)
 		{
 			await EnsureStartedAsync(cancellationToken);
 
 			List<AIFunctionDeclaration> customTools = tools is null ? [] : [.. tools];
 			HashSet<string> customToolNames = [.. customTools.Select(t => t.Name)];
+			bool restricted = restrictToCustomTools || !_copilotOptions.EnableBuiltInTools;
 			// Null exposes every built-in tool (only possible when built-in tools are explicitly enabled).
-			List<string>? availableTools = !_copilotOptions.EnableBuiltInTools
+			List<string>? availableTools = restricted
 				? ["web_fetch", .. customToolNames]
 				: _copilotOptions.AvailableBuiltInTools is null
 					? null
@@ -116,7 +117,7 @@ namespace CopilotLib
 				: new SystemMessageConfig { Mode = SystemMessageMode.Append, Content = systemMessage };
 
 			// Text generation with web browsing only: no file or shell access.
-			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = _copilotOptions.ApproveAllPermissions ? PermissionHandler.ApproveAll : ((request, invocation) =>
+			Func<PermissionRequest, PermissionInvocation, Task<PermissionDecision>> deny = _copilotOptions.ApproveAllPermissions && !restrictToCustomTools ? PermissionHandler.ApproveAll : ((request, invocation) =>
 				(request is PermissionRequestUrl url && IsPublicHttpUrl(url.Url)) || (request is PermissionRequestCustomTool custom && customToolNames.Contains(custom.ToolName))
 					? PermissionHandler.ApproveAll(request, invocation)
 					: Task.FromResult<PermissionDecision>(PermissionDecision.Reject("Tool use is not allowed")));

@@ -24,7 +24,7 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <PackageVersion Include="Neph.GenericLibs.Net.DatabaseLib" Version="0.1.0" />
     <PackageVersion Include="Neph.GenericLibs.Net.JwtLib.Contracts" Version="0.1.1" />
-    <PackageVersion Include="Neph.GenericLibs.Net.LLMLib" Version="0.2.0" />
+    <PackageVersion Include="Neph.GenericLibs.Net.LLMLib" Version="0.3.0" />
     <PackageVersion Include="Neph.GenericLibs.Net.NotifierLib" Version="0.2.0" />
     <PackageVersion Include="Neph.GenericLibs.Net.StorageLib" Version="0.1.0" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />

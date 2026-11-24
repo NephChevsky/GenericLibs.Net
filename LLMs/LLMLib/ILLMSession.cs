@@ -11,6 +11,9 @@ namespace LLMLib
 		/// <summary>Reasoning effort requested from the model (e.g. "low", "medium", "high"). Provider default when null.</summary>
 		public string? ReasoningEffort { get; init; }
 		public IReadOnlyList<AIFunction>? Tools { get; init; }
+
+		/// <summary>When true, the session may only use <see cref="Tools"/> (plus provider-safe web fetching), regardless of the provider's global tool and permission configuration.</summary>
+		public bool RestrictToCustomTools { get; init; }
 	}
 
 	/// <summary>A live conversation with an LLM. Obtain it via <see cref="ILLMService.CreateSessionAsync"/> or <see cref="ILLMService.OpenSessionAsync"/>. Dispose it when done.</summary>
