@@ -100,9 +100,14 @@ namespace CopilotLib
 			await EnsureStartedAsync(cancellationToken);
 
 			// Built-in tools are never provided: the session can only use the caller's tools.
-			List<AIFunctionDeclaration> customTools = tools is null ? [] : [.. tools];
+			// Bare names match tools of any source, so a built-in sharing a custom tool's name would be enabled (and win dispatch):
+			// custom tools are allowed by their source-qualified name and every built-in is excluded.
+			// The runtime still handles some names itself (read_file, grep_search...) even when excluded,
+			// so every custom tool is also marked as an override to make the runtime dispatch it to the caller.
+			List<AIFunctionDeclaration> customTools = tools is null ? [] : [.. tools.Select(t => new OverridingTool(t))];
 			HashSet<string> customToolNames = [.. customTools.Select(t => t.Name)];
-			List<string> availableTools = [.. customToolNames];
+			List<string> availableTools = [.. customToolNames.Select(name => "custom:" + name)];
+			List<string> excludedTools = ["builtin:*"];
 
 			SystemMessageConfig? system = string.IsNullOrWhiteSpace(systemMessage)
 				? null
@@ -125,6 +130,7 @@ namespace CopilotLib
 					WorkingDirectory = _workingDirectory,
 					Tools = customTools,
 					AvailableTools = availableTools,
+					ExcludedTools = excludedTools,
 					OnPermissionRequest = deny,
 				}, cancellationToken);
 			}
@@ -139,6 +145,7 @@ namespace CopilotLib
 				WorkingDirectory = _workingDirectory,
 				Tools = customTools,
 				AvailableTools = availableTools,
+				ExcludedTools = excludedTools,
 				OnPermissionRequest = deny,
 			}, cancellationToken);
 		}
@@ -170,6 +177,20 @@ namespace CopilotLib
 			await _client.DisposeAsync();
 			_startLock.Dispose();
 			GC.SuppressFinalize(this);
+		}
+
+		/// <summary>Adds the SDK's override marker (<c>CopilotTool.OverridesBuiltInToolKey</c>, internal) to a caller tool.</summary>
+		private sealed class OverridingTool : DelegatingAIFunction
+		{
+			private const string OverridesBuiltInToolKey = "is_override";
+
+			public OverridingTool(AIFunction innerFunction) : base(innerFunction)
+			{
+				Dictionary<string, object?> properties = new(innerFunction.AdditionalProperties) { [OverridesBuiltInToolKey] = true };
+				AdditionalProperties = properties;
+			}
+
+			public override IReadOnlyDictionary<string, object?> AdditionalProperties { get; }
 		}
 	}
 }
