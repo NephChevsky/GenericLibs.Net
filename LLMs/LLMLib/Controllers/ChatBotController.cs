@@ -77,10 +77,13 @@ namespace LLMLib.Controllers
 			Response.Headers["X-Accel-Buffering"] = "no";
 			Response.ContentType = "text/plain; charset=utf-8";
 
-			await foreach (string chunk in session.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, request.Attachments, cancellationToken))
+			await foreach (LLMStreamItem item in session.AskStreamingAsync(string.IsNullOrWhiteSpace(request.Message) ? "See attachments" : request.Message, request.Attachments, cancellationToken))
 			{
-				await Response.WriteAsync(chunk, cancellationToken);
-				await Response.Body.FlushAsync(cancellationToken);
+				if (item is LLMTextChunk text)
+				{
+					await Response.WriteAsync(text.Text, cancellationToken);
+					await Response.Body.FlushAsync(cancellationToken);
+				}
 			}
 		}
 	}

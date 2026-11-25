@@ -18,8 +18,11 @@ namespace LLMLib
 	{
 		string SessionId { get; }
 
-		/// <summary>Sends a prompt on this session and streams the response chunks as they are generated.</summary>
-		IAsyncEnumerable<string> AskStreamingAsync(string prompt, IReadOnlyList<ChatAttachment>? attachments = null, CancellationToken cancellationToken = default);
+		/// <summary>Sends a prompt on this session and streams <see cref="LLMTextChunk"/> items as text is generated, and an <see cref="LLMUsageUpdate"/> each time the provider reports usage.</summary>
+		IAsyncEnumerable<LLMStreamItem> AskStreamingAsync(string prompt, IReadOnlyList<ChatAttachment>? attachments = null, CancellationToken cancellationToken = default);
+
+		/// <summary>Total cost of this session in US dollars, including turns made before it was resumed.</summary>
+		decimal SessionCost { get; }
 
 		/// <summary>Returns the user and assistant messages of this session.</summary>
 		Task<IReadOnlyList<ChatMessageInfo>> GetMessagesAsync(CancellationToken cancellationToken = default);
