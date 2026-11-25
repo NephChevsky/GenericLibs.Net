@@ -1,12 +1,19 @@
 <Project>
   <!-- GitHub.Copilot.SDK ships its runtime download/copy targets in build/ (not buildTransitive/),
        so they do not flow to projects that only reference CopilotLib. Import them explicitly.
-       Keep the version in sync with the GitHub.Copilot.SDK PackageReference in CopilotLib.csproj. -->
+       The SDK version is generated at pack time from the version CopilotLib was compiled against. -->
+  <Import Project="$(MSBuildThisFileDirectory)Neph.GenericLibs.Net.CopilotLib.SdkVersion.targets" Condition="'$(NephCopilotLibSdkVersion)' == '' And Exists('$(MSBuildThisFileDirectory)Neph.GenericLibs.Net.CopilotLib.SdkVersion.targets')" />
+
   <PropertyGroup>
-    <_CopilotSdkTargets>$(NuGetPackageRoot)github.copilot.sdk/1.0.22/build/GitHub.Copilot.SDK.targets</_CopilotSdkTargets>
+    <_NephCopilotSdkTargets>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))github.copilot.sdk/$(NephCopilotLibSdkVersion)/build/GitHub.Copilot.SDK.targets</_NephCopilotSdkTargets>
+    <!-- The SDK always defines _CopilotRuntimeWrapper: when set, its targets are already imported (direct PackageReference). -->
+    <_NephCopilotSdkTargetsAlreadyImported Condition="'$(_CopilotRuntimeWrapper)' != ''">true</_NephCopilotSdkTargetsAlreadyImported>
+    <_NephCopilotSdkTargetsMissing Condition="'$(_NephCopilotSdkTargetsAlreadyImported)' != 'true' And ('$(NephCopilotLibSdkVersion)' == '' Or !Exists('$(_NephCopilotSdkTargets)'))">true</_NephCopilotSdkTargetsMissing>
   </PropertyGroup>
-  <Import Project="$(_CopilotSdkTargets)" Condition="Exists('$(_CopilotSdkTargets)') And '$(_CopilotSdkTargetsImported)' != 'true'" />
-  <PropertyGroup>
-    <_CopilotSdkTargetsImported>true</_CopilotSdkTargetsImported>
-  </PropertyGroup>
+
+  <Import Project="$(_NephCopilotSdkTargets)" Condition="'$(_NephCopilotSdkTargetsAlreadyImported)' != 'true' And '$(_NephCopilotSdkTargetsMissing)' != 'true'" />
+
+  <Target Name="_NephValidateCopilotSdkTargets" BeforeTargets="BeforeBuild" Condition="'$(_NephCopilotSdkTargetsMissing)' == 'true'">
+    <Error Text="Neph.GenericLibs.Net.CopilotLib could not import the Copilot runtime targets of GitHub.Copilot.SDK '$(NephCopilotLibSdkVersion)' from '$(_NephCopilotSdkTargets)', so the Copilot runtime would not be copied to the output. Restore the project, or add a direct PackageReference to GitHub.Copilot.SDK." />
+  </Target>
 </Project>

@@ -29,8 +29,35 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="buildTransitive\Neph.GenericLibs.Net.CopilotLib.targets" Pack="true" PackagePath="buildTransitive\" />
-    <None Include="buildTransitive\Neph.GenericLibs.Net.CopilotLib.targets" Pack="true" PackagePath="build\" />
+    <None Include="buildTransitive\Neph.GenericLibs.Net.CopilotLib.targets" Pack="true" PackagePath="buildTransitive\;build\" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <BeforePack>$(BeforePack);_GenerateCopilotSdkVersionFile</BeforePack>
+  </PropertyGroup>
+
+  <!-- Records the resolved GitHub.Copilot.SDK version so the packed targets import the matching SDK runtime targets. -->
+  <Target Name="_GenerateCopilotSdkVersionFile" DependsOnTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <_CopilotSdkAsset Include="@(ResolvedCompileFileDefinitions)" Condition="'%(ResolvedCompileFileDefinitions.NuGetPackageId)' == 'GitHub.Copilot.SDK'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_CopilotSdkVersion>@(_CopilotSdkAsset->'%(NuGetPackageVersion)'->Distinct())</_CopilotSdkVersion>
+      <_CopilotSdkVersionFile>$(IntermediateOutputPath)Neph.GenericLibs.Net.CopilotLib.SdkVersion.targets</_CopilotSdkVersionFile>
+    </PropertyGroup>
+    <Error Condition="'$(_CopilotSdkVersion)' == '' Or $(_CopilotSdkVersion.Contains(';'))" Text="Could not determine a single resolved GitHub.Copilot.SDK version (found '$(_CopilotSdkVersion)')." />
+    <ItemGroup>
+      <_CopilotSdkVersionFileLine Include="&lt;Project&gt;" />
+      <_CopilotSdkVersionFileLine Include="  &lt;PropertyGroup&gt;" />
+      <_CopilotSdkVersionFileLine Include="    &lt;NephCopilotLibSdkVersion&gt;$(_CopilotSdkVersion.ToLowerInvariant())&lt;/NephCopilotLibSdkVersion&gt;" />
+      <_CopilotSdkVersionFileLine Include="  &lt;/PropertyGroup&gt;" />
+      <_CopilotSdkVersionFileLine Include="&lt;/Project&gt;" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_CopilotSdkVersionFile)" Lines="@(_CopilotSdkVersionFileLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <None Include="$(_CopilotSdkVersionFile)" Pack="true" PackagePath="buildTransitive\;build\" />
+      <FileWrites Include="$(_CopilotSdkVersionFile)" />
+    </ItemGroup>
+  </Target>
 
 </Project>
