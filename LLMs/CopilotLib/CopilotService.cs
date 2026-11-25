@@ -22,7 +22,7 @@ namespace CopilotLib
 		public CopilotService(IConfiguration configuration, ILogger<CopilotService> logger, CopilotOptions? copilotOptions = null)
 		{
 			_logger = logger;
-			_defaultModel = "claude-sonnet5.5";
+			_defaultModel = "claude-sonnet-5.5";
 
 			string baseDirectory = Path.Combine(AppContext.BaseDirectory, "Copilot");
 			Directory.CreateDirectory(baseDirectory);
