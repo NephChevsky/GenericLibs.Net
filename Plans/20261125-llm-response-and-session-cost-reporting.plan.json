@@ -1,0 +1,408 @@
+{
+  "title": "LLM response and session cost reporting",
+  "repositoryRoot": "D:\\dev\\GenericLibs.Net",
+  "summary": "\u0060ILLMSession.AskStreamingAsync\u0060 will return typed stream items instead of plain strings: \u0060LLMTextChunk\u0060 for text and \u0060LLMUsageUpdate\u0060 for cost. A new \u0060SessionCost\u0060 property gives the running total. This is a breaking change. CopilotLib emits an \u0060LLMUsageUpdate\u0060 every time the Copilot SDK reports a usage event. Each update carries the cost of the current response so far and the session total, in dollars, where $ = AI credits / 100. When a session is resumed, its total is rebuilt from the stored session events. \u0060ChatBotController\u0060 is adapted to keep streaming text only. Versions are bumped (LLMLib 0.3.0, CopilotLib 0.7.0), a CopilotLib.Tests project is added, and both packages are packed into local-nuget-feed so CodeAssistant can consume them.",
+  "findings": [
+    "\u0060ILLMSession.AskStreamingAsync\u0060 currently returns \u0060IAsyncEnumerable\u003Cstring\u003E\u0060. Callers: \u0060ChatBotController\u0060 (LLMLib), plus CodeAssistant\u0027s TUI, WebApp \u0060ChatConversation\u0060 and \u0060FeaturePlanner\u0060.",
+    "\u0060CopilotLLMSession.AskStreamingAsync\u0060 subscribes with \u0060_session.On\u003CSessionEvent\u003E\u0060 and only handles \u0060AssistantMessageDeltaEvent\u0060, \u0060SessionErrorEvent\u0060 and \u0060SessionIdleEvent\u0060. Nothing reads usage or cost events today.",
+    "\u0060CopilotService.OpenSessionAsync\u0060 resumes through \u0060_client.ResumeSessionAsync\u0060. \u0060CopilotLLMSession.GetMessagesAsync\u0060 already shows how stored events are replayed with \u0060_session.GetEventsAsync()\u0060.",
+    "CopilotLib consumes LLMLib as a NuGet package (\u0060Neph.GenericLibs.Net.LLMLib\u0060), with its version pinned centrally in Directory.Packages.props (0.2.0). So LLMLib 0.3.0 must be packed into local-nuget-feed before CopilotLib can build against it.",
+    "Current versions are LLMLib 0.2.0 and CopilotLib 0.6.0. Packages are published to nuget.org by manual workflow_dispatch workflows and also stored in local-nuget-feed/.",
+    "The repository has no test projects. The code style uses tabs, Allman braces, explicit types and XML doc summaries."
+  ],
+  "phases": [
+    {
+      "name": "LLMLib API",
+      "goal": "Define the typed stream items and the new session contract in LLMLib, adapt \u0060ChatBotController\u0060, and bump LLMLib to 0.3.0.",
+      "tasks": [
+        {
+          "id": "T1.1",
+          "title": "Add typed stream item DTOs",
+          "description": "Create LLMs/LLMLib/DTO/LLMStreamItem.cs in namespace \u0060LLMLib.DTO\u0060 with:\n- \u0060public abstract record LLMStreamItem;\u0060\n- \u0060public sealed record LLMTextChunk(string Text) : LLMStreamItem;\u0060\n- \u0060public sealed record LLMUsageUpdate(decimal ResponseCost, decimal SessionCost) : LLMStreamItem;\u0060\n\nAdd XML docs:\n- Costs are in US dollars.\n- \u0060ResponseCost\u0060 is the total for the current \u0060AskStreamingAsync\u0060 call so far.\n- \u0060SessionCost\u0060 is the total for the whole session, including earlier turns and turns from before a resume.\n- An update is emitted every time the provider reports usage.\n\nFollow the repository style (tabs, block namespace).",
+          "status": "todo",
+          "files": [
+            "LLMs/LLMLib/DTO/LLMStreamItem.cs"
+          ],
+          "dependsOn": [],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-01",
+            "AC-02"
+          ]
+        },
+        {
+          "id": "T1.2",
+          "title": "Change ILLMSession contract",
+          "description": "In LLMs/LLMLib/ILLMSession.cs:\n- Change \u0060AskStreamingAsync\u0060 to return \u0060IAsyncEnumerable\u003CLLMStreamItem\u003E\u0060. Keep the same parameters.\n- Update its summary: it streams \u0060LLMTextChunk\u0060 items as text is generated, and an \u0060LLMUsageUpdate\u0060 each time the provider reports usage.\n- Add \u0060decimal SessionCost { get; }\u0060 with the summary \u0022Total cost of this session in US dollars, including turns made before it was resumed.\u0022",
+          "status": "todo",
+          "files": [
+            "LLMs/LLMLib/ILLMSession.cs"
+          ],
+          "dependsOn": [
+            "T1.1"
+          ],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-01",
+            "AC-02",
+            "AC-03"
+          ]
+        },
+        {
+          "id": "T1.3",
+          "title": "Adapt ChatBotController to typed items",
+          "description": "In LLMs/LLMLib/Controllers/ChatBotController.cs \u0060ChatStream\u0060:\n- Iterate \u0060IAsyncEnumerable\u003CLLMStreamItem\u003E\u0060.\n- For \u0060LLMTextChunk text\u0060, write \u0060text.Text\u0060 and flush, exactly as before.\n- Ignore every other item type, including \u0060LLMUsageUpdate\u0060.\n\nResponse headers and status codes stay unchanged.",
+          "status": "todo",
+          "files": [
+            "LLMs/LLMLib/Controllers/ChatBotController.cs"
+          ],
+          "dependsOn": [
+            "T1.2"
+          ],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-04"
+          ]
+        },
+        {
+          "id": "T1.4",
+          "title": "Bump LLMLib to 0.3.0",
+          "description": "Make these version changes:\n- In LLMs/LLMLib/LLMLib.csproj, set \u0060\u003CVersion\u003E0.3.0\u003C/Version\u003E\u0060.\n- In Directory.Packages.props, set \u0060Neph.GenericLibs.Net.LLMLib\u0060 to \u00600.3.0\u0060 so CopilotLib consumes the new API.",
+          "status": "todo",
+          "files": [
+            "LLMs/LLMLib/LLMLib.csproj",
+            "Directory.Packages.props"
+          ],
+          "dependsOn": [],
+          "parallelWith": [
+            "T1.1",
+            "T1.2",
+            "T1.3"
+          ],
+          "acceptanceCriterionIds": [
+            "AC-05"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CopilotLib cost tracking",
+      "goal": "Turn Copilot SDK usage events into \u0060LLMUsageUpdate\u0060 items, track the session total including history on resume, and bump CopilotLib to 0.7.0.",
+      "tasks": [
+        {
+          "id": "T2.1",
+          "title": "Confirm SDK usage event and add CopilotUsageTracker",
+          "description": "First, inspect GitHub.Copilot.SDK 1.0.34 (IntelliSense, or the package XML docs under the NuGet cache) and identify the session event that reports billing for each model call. Most likely this is \u0060AssistantUsageEvent\u0060 (\u0022assistant.usage\u0022). Find the field that holds AI credits or nano-AIU, and its unit. Record the conversion in a code comment, for example \u0060credits = nanoAiu / 1_000_000_000m\u0060.\n\nThen create LLMs/CopilotLib/CopilotUsageTracker.cs, an \u0060internal sealed class CopilotUsageTracker\u0060 with:\n- \u0060internal const decimal AiCreditsPerDollar = 100m\u0060.\n- \u0060internal static decimal ToDollars(decimal aiCredits) =\u003E aiCredits / AiCreditsPerDollar\u0060.\n- \u0060internal static decimal? GetAiCredits(SessionEvent evt)\u0060. It returns the credits of a usage event, \u00600\u0060 when the event is a usage event with a null field, and \u0060null\u0060 for non-usage events.\n- \u0060internal static decimal SumSessionCost(IEnumerable\u003CSessionEvent\u003E events)\u0060. It returns the dollar total of all usage events.\n- A constructor \u0060CopilotUsageTracker(decimal initialSessionCost)\u0060.\n- A thread-safe \u0060decimal SessionCost\u0060 property (use a \u0060Lock\u0060; decimals can\u0027t use \u0060Interlocked\u0060).\n- \u0060void BeginResponse()\u0060, which resets the response total to 0.\n- \u0060LLMUsageUpdate AddCredits(decimal aiCredits)\u0060. It adds \u0060ToDollars(aiCredits)\u0060 to both the response and session totals and returns \u0060new LLMUsageUpdate(responseCost, sessionCost)\u0060.\n\nAdd \u0060\u003CInternalsVisibleTo Include=\u0022CopilotLib.Tests\u0022 /\u003E\u0060 to CopilotLib.csproj.",
+          "status": "todo",
+          "files": [
+            "LLMs/CopilotLib/CopilotUsageTracker.cs",
+            "LLMs/CopilotLib/CopilotLib.csproj"
+          ],
+          "dependsOn": [
+            "T1.1",
+            "T1.4"
+          ],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-02",
+            "AC-03"
+          ]
+        },
+        {
+          "id": "T2.2",
+          "title": "Stream typed items from CopilotLLMSession",
+          "description": "In LLMs/CopilotLib/CopilotLLMSession.cs:\n- Add a \u0060CopilotUsageTracker _usage\u0060 field. Change the internal constructor to \u0060CopilotLLMSession(CopilotSession session, string sessionId, decimal initialSessionCost)\u0060.\n- Implement \u0060public decimal SessionCost =\u003E _usage.SessionCost;\u0060.\n- In \u0060AskStreamingAsync\u0060 (now returning \u0060IAsyncEnumerable\u003CLLMStreamItem\u003E\u0060), use \u0060Channel\u003CLLMStreamItem\u003E\u0060 and call \u0060_usage.BeginResponse()\u0060 before subscribing.\n- In the event handler:\n  - \u0060AssistantMessageDeltaEvent\u0060: write \u0060new LLMTextChunk(delta.Data.DeltaContent)\u0060.\n  - Any event where \u0060CopilotUsageTracker.GetAiCredits(evt)\u0060 is not null: write \u0060_usage.AddCredits(credits)\u0060.\n  - Keep the existing error and idle handling.\n\nUsage events that arrive after \u0060SessionIdleEvent\u0060 aren\u0027t delivered for that call, since the subscription is disposed. If the SDK sends the usage event after idle, complete the channel only once both have arrived, or document the behaviour after checking the event order in T2.1.\n\n\u0060GetMessagesAsync\u0060 and \u0060DisposeAsync\u0060 stay unchanged.",
+          "status": "todo",
+          "files": [
+            "LLMs/CopilotLib/CopilotLLMSession.cs"
+          ],
+          "dependsOn": [
+            "T1.2",
+            "T2.1"
+          ],
+          "parallelWith": [
+            "T2.3"
+          ],
+          "acceptanceCriterionIds": [
+            "AC-01",
+            "AC-02"
+          ]
+        },
+        {
+          "id": "T2.3",
+          "title": "Rebuild session cost on resume",
+          "description": "In LLMs/CopilotLib/CopilotService.cs:\n- \u0060CreateSessionAsync\u0060: construct \u0060new CopilotLLMSession(session, sessionId, 0m)\u0060.\n- \u0060OpenSessionAsync\u0060: after \u0060GetSessionAsync\u0060, call \u0060IReadOnlyList\u003CSessionEvent\u003E events = await session.GetEventsAsync(cancellationToken)\u0060. Then construct \u0060new CopilotLLMSession(session, sessionId, CopilotUsageTracker.SumSessionCost(events))\u0060.\n\nLog the restored cost at Debug level (session id and cost).",
+          "status": "todo",
+          "files": [
+            "LLMs/CopilotLib/CopilotService.cs"
+          ],
+          "dependsOn": [
+            "T2.1"
+          ],
+          "parallelWith": [
+            "T2.2"
+          ],
+          "acceptanceCriterionIds": [
+            "AC-03"
+          ]
+        },
+        {
+          "id": "T2.4",
+          "title": "Bump CopilotLib to 0.7.0",
+          "description": "In LLMs/CopilotLib/CopilotLib.csproj, set \u0060\u003CVersion\u003E0.7.0\u003C/Version\u003E\u0060.",
+          "status": "todo",
+          "files": [
+            "LLMs/CopilotLib/CopilotLib.csproj"
+          ],
+          "dependsOn": [
+            "T2.1"
+          ],
+          "parallelWith": [
+            "T2.2",
+            "T2.3"
+          ],
+          "acceptanceCriterionIds": [
+            "AC-05"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tests and packaging",
+      "goal": "Cover the cost logic with tests and publish both packages to the local feed for CodeAssistant.",
+      "tasks": [
+        {
+          "id": "T3.1",
+          "title": "Create CopilotLib.Tests project",
+          "description": "Create LLMs/CopilotLib.Tests/CopilotLib.Tests.csproj:\n- net10.0, \u0060IsPackable=false\u0060, \u0060NoWarn GHCP001\u0060.\n- A \u0060ProjectReference\u0060 to ../CopilotLib/CopilotLib.csproj.\n- Packages \u0060Microsoft.NET.Test.Sdk\u0060, \u0060xunit.v3\u0060 (or \u0060xunit\u0060 2.x) and \u0060xunit.runner.visualstudio\u0060, with their versions added to Directory.Packages.props.\n- Add the project to GenericLibs.Net.slnx under the /LLMs/ folder.\n\nAdd CopilotUsageTrackerTests.cs with these unit tests:\n- (a) \u0060ToDollars(250m) == 2.5m\u0060.\n- (b) A new tracker with initial cost 1.00: \u0060AddCredits(10)\u0060 then \u0060AddCredits(5)\u0060 gives updates (0.10, 1.10) and (0.15, 1.15), and \u0060SessionCost == 1.15\u0060.\n- (c) \u0060BeginResponse()\u0060 resets \u0060ResponseCost\u0060 but not \u0060SessionCost\u0060.\n- (d) \u0060SumSessionCost\u0060 over a list with two usage events and unrelated events returns the dollar sum of the usage events only. Build the SDK event instances directly if their constructors are public, otherwise deserialize them from JSON.\n\nAdd CopilotSessionCostIntegrationTests.cs. It is skipped unless the \u0060COPILOT_TEST_TOKEN\u0060 environment variable is set. It builds a \u0060CopilotService\u0060 with that token as \u0060ConnectionStrings:Copilot\u0060, then:\n- creates a session and asks \u0022Reply with the single word OK\u0022;\n- asserts that at least one \u0060LLMTextChunk\u0060 and at least one \u0060LLMUsageUpdate\u0060 were streamed;\n- asserts that the last update\u0027s \u0060SessionCost\u0060 equals \u0060session.SessionCost\u0060 and is \u003E= its \u0060ResponseCost\u0060;\n- disposes the session, reopens it with \u0060OpenSessionAsync\u0060, and asserts that \u0060SessionCost\u0060 equals the previous total;\n- deletes the session.",
+          "status": "todo",
+          "files": [
+            "LLMs/CopilotLib.Tests/CopilotLib.Tests.csproj",
+            "LLMs/CopilotLib.Tests/CopilotUsageTrackerTests.cs",
+            "LLMs/CopilotLib.Tests/CopilotSessionCostIntegrationTests.cs",
+            "Directory.Packages.props",
+            "GenericLibs.Net.slnx"
+          ],
+          "dependsOn": [
+            "T2.2",
+            "T2.3",
+            "T3.2"
+          ],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-01",
+            "AC-02",
+            "AC-03"
+          ]
+        },
+        {
+          "id": "T3.2",
+          "title": "Pack LLMLib then CopilotLib into local-nuget-feed",
+          "description": "From the repository root, run these commands in order:\n1. \u0060dotnet pack LLMs/LLMLib/LLMLib.csproj -c Release -o local-nuget-feed\u0060\n2. \u0060dotnet restore LLMs/CopilotLib/CopilotLib.csproj\u0060, which picks up LLMLib 0.3.0 from the local feed.\n3. \u0060dotnet pack LLMs/CopilotLib/CopilotLib.csproj -c Release -o local-nuget-feed\u0060\n\nThis produces Neph.GenericLibs.Net.LLMLib.0.3.0.nupkg and Neph.GenericLibs.Net.CopilotLib.0.7.0.nupkg; commit them like the existing packages. Publishing to nuget.org is done separately through the workflows publish-llmlib-nuget.yml and publish-copilotlib-nuget.yml (LLMLib first). The CodeAssistant plan depends on this task.",
+          "status": "todo",
+          "files": [
+            "local-nuget-feed/Neph.GenericLibs.Net.LLMLib.0.3.0.nupkg",
+            "local-nuget-feed/Neph.GenericLibs.Net.CopilotLib.0.7.0.nupkg"
+          ],
+          "dependsOn": [
+            "T1.3",
+            "T1.4",
+            "T2.2",
+            "T2.3",
+            "T2.4"
+          ],
+          "parallelWith": [],
+          "acceptanceCriterionIds": [
+            "AC-05"
+          ]
+        }
+      ]
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "id": "AC-01",
+      "description": "Given a Copilot session, when \u0060AskStreamingAsync\u0060 is enumerated, then the reply text arrives as \u0060LLMTextChunk\u0060 items in generation order, and joining their \u0060Text\u0060 gives the full reply.",
+      "tests": [
+        {
+          "id": "AT-01.1",
+          "kind": "integration",
+          "description": "\u0060CopilotSessionCostIntegrationTests\u0060: ask \u0022Reply with the single word OK\u0022 and collect the \u0060LLMTextChunk\u0060 items.",
+          "howToRun": "$env:COPILOT_TEST_TOKEN=\u0027\u003Ctoken\u003E\u0027; dotnet test LLMs/CopilotLib.Tests",
+          "expectedResult": "At least one \u0060LLMTextChunk\u0060 is received, and the joined text contains \u0022OK\u0022."
+        }
+      ]
+    },
+    {
+      "id": "AC-02",
+      "description": "Given a session with cost C0, when the provider reports a usage event worth X AI credits during a response, then an \u0060LLMUsageUpdate\u0060 is streamed immediately. Its \u0060ResponseCost\u0060 is the dollar total of this response so far (X/100 summed) and its \u0060SessionCost\u0060 is C0 plus \u0060ResponseCost\u0060. \u0060session.SessionCost\u0060 matches it.",
+      "tests": [
+        {
+          "id": "AT-02.1",
+          "kind": "unit",
+          "description": "\u0060CopilotUsageTrackerTests\u0060: check the conversion, accumulation across several \u0060AddCredits\u0060 calls, and the \u0060BeginResponse\u0060 reset.",
+          "howToRun": "dotnet test LLMs/CopilotLib.Tests --filter FullyQualifiedName~CopilotUsageTrackerTests",
+          "expectedResult": "\u0060ToDollars(250)\u0060 = 2.5. The updates are (0.10, 1.10) and (0.15, 1.15). After \u0060BeginResponse\u0060, \u0060ResponseCost\u0060 restarts at 0 while \u0060SessionCost\u0060 is kept. All tests pass."
+        },
+        {
+          "id": "AT-02.2",
+          "kind": "integration",
+          "description": "Live session: check that usage updates are streamed and consistent.",
+          "howToRun": "$env:COPILOT_TEST_TOKEN=\u0027\u003Ctoken\u003E\u0027; dotnet test LLMs/CopilotLib.Tests --filter FullyQualifiedName~CopilotSessionCostIntegrationTests",
+          "expectedResult": "At least one \u0060LLMUsageUpdate\u0060 is received. The last update\u0027s \u0060SessionCost\u0060 equals \u0060session.SessionCost\u0060 and is \u003E= its \u0060ResponseCost\u0060."
+        }
+      ]
+    },
+    {
+      "id": "AC-03",
+      "description": "Given a stored session whose earlier turns cost C, when it is reopened with \u0060OpenSessionAsync\u0060, then \u0060SessionCost\u0060 equals C before any new prompt, and later updates continue from C.",
+      "tests": [
+        {
+          "id": "AT-03.1",
+          "kind": "unit",
+          "description": "\u0060SumSessionCost\u0060 over a list with usage events and unrelated events.",
+          "howToRun": "dotnet test LLMs/CopilotLib.Tests --filter FullyQualifiedName~CopilotUsageTrackerTests",
+          "expectedResult": "Only the usage events are summed, converted to dollars."
+        },
+        {
+          "id": "AT-03.2",
+          "kind": "integration",
+          "description": "Create a session, ask once, dispose it, reopen it with \u0060OpenSessionAsync\u0060, and compare \u0060SessionCost\u0060.",
+          "howToRun": "$env:COPILOT_TEST_TOKEN=\u0027\u003Ctoken\u003E\u0027; dotnet test LLMs/CopilotLib.Tests --filter FullyQualifiedName~CopilotSessionCostIntegrationTests",
+          "expectedResult": "The reopened session\u0027s \u0060SessionCost\u0060 equals the total reported by the last update before disposal."
+        }
+      ]
+    },
+    {
+      "id": "AC-04",
+      "description": "Given a controller derived from \u0060ChatBotController\u0060, when POST api/{controller}/stream is called, then the response body still contains only the reply text (no cost data), and the \u0060X-Session-Id\u0060 header is still set.",
+      "tests": [
+        {
+          "id": "AT-04.1",
+          "kind": "manual",
+          "description": "Build the solution, then check the code and, in any host app deriving \u0060ChatBotController\u0060, call the stream endpoint.",
+          "howToRun": "dotnet build GenericLibs.Net.slnx; then POST {\u0022message\u0022:\u0022hi\u0022} to /api/\u003Ccontroller\u003E/stream",
+          "expectedResult": "The build succeeds. The streamed body is plain reply text with no cost data, and the \u0060X-Session-Id\u0060 header is present."
+        }
+      ]
+    },
+    {
+      "id": "AC-05",
+      "description": "Given the changes are complete, when the packages are packed, then local-nuget-feed contains Neph.GenericLibs.Net.LLMLib 0.3.0 and Neph.GenericLibs.Net.CopilotLib 0.7.0, and CopilotLib 0.7.0 depends on LLMLib 0.3.0.",
+      "tests": [
+        {
+          "id": "AT-05.1",
+          "kind": "manual",
+          "description": "Run the pack commands from T3.2 and inspect the nuspec dependencies of the CopilotLib package.",
+          "howToRun": "dotnet pack LLMs/LLMLib/LLMLib.csproj -c Release -o local-nuget-feed; dotnet pack LLMs/CopilotLib/CopilotLib.csproj -c Release -o local-nuget-feed; open the .nupkg (zip) and read the .nuspec",
+          "expectedResult": "Both .nupkg files exist, and the CopilotLib nuspec lists the dependency Neph.GenericLibs.Net.LLMLib \u003E= 0.3.0."
+        }
+      ]
+    }
+  ],
+  "relevantFiles": [
+    {
+      "path": "LLMs/LLMLib/ILLMSession.cs",
+      "change": "modify",
+      "purpose": "Change the stream type and add \u0060SessionCost\u0060."
+    },
+    {
+      "path": "LLMs/LLMLib/DTO/LLMStreamItem.cs",
+      "change": "create",
+      "purpose": "Typed stream items (text chunk and usage update)."
+    },
+    {
+      "path": "LLMs/LLMLib/Controllers/ChatBotController.cs",
+      "change": "modify",
+      "purpose": "Write only text items to the response."
+    },
+    {
+      "path": "LLMs/LLMLib/LLMLib.csproj",
+      "change": "modify",
+      "purpose": "Version 0.3.0."
+    },
+    {
+      "path": "Directory.Packages.props",
+      "change": "modify",
+      "purpose": "Pin LLMLib 0.3.0 and add the test package versions."
+    },
+    {
+      "path": "LLMs/CopilotLib/CopilotUsageTracker.cs",
+      "change": "create",
+      "purpose": "Converts AI credits to dollars, accumulates totals, and sums the cost history."
+    },
+    {
+      "path": "LLMs/CopilotLib/CopilotLLMSession.cs",
+      "change": "modify",
+      "purpose": "Streams typed items and emits usage updates."
+    },
+    {
+      "path": "LLMs/CopilotLib/CopilotService.cs",
+      "change": "modify",
+      "purpose": "Passes the initial session cost (0 for new sessions, rebuilt history on resume)."
+    },
+    {
+      "path": "LLMs/CopilotLib/CopilotLib.csproj",
+      "change": "modify",
+      "purpose": "Version 0.7.0 and InternalsVisibleTo for the tests."
+    },
+    {
+      "path": "LLMs/CopilotLib.Tests/CopilotLib.Tests.csproj",
+      "change": "create",
+      "purpose": "New test project."
+    },
+    {
+      "path": "LLMs/CopilotLib.Tests/CopilotUsageTrackerTests.cs",
+      "change": "create",
+      "purpose": "Unit tests for the cost logic."
+    },
+    {
+      "path": "LLMs/CopilotLib.Tests/CopilotSessionCostIntegrationTests.cs",
+      "change": "create",
+      "purpose": "Integration tests that use a live Copilot token and are skipped without one."
+    },
+    {
+      "path": "GenericLibs.Net.slnx",
+      "change": "modify",
+      "purpose": "Registers the test project."
+    },
+    {
+      "path": "local-nuget-feed",
+      "change": "reference",
+      "purpose": "Destination of the packed 0.3.0 and 0.7.0 packages."
+    },
+    {
+      "path": ".github/workflows/publish-llmlib-nuget.yml",
+      "change": "reference",
+      "purpose": "Manual publication of LLMLib to nuget.org."
+    },
+    {
+      "path": ".github/workflows/publish-copilotlib-nuget.yml",
+      "change": "reference",
+      "purpose": "Manual publication of CopilotLib to nuget.org."
+    }
+  ],
+  "decisions": [
+    "Cost is GitHub AI credits converted to dollars, using $ = AI credits / 100 (the user\u0027s definition).",
+    "Breaking API change (the user chose it): \u0060AskStreamingAsync\u0060 returns \u0060IAsyncEnumerable\u003CLLMStreamItem\u003E\u0060. \u0060LLMStreamItem\u0060 is an abstract record with two sealed subtypes: \u0060LLMTextChunk(string Text)\u0060 and \u0060LLMUsageUpdate(decimal ResponseCost, decimal SessionCost)\u0060.",
+    "An \u0060LLMUsageUpdate\u0060 is emitted for each usage event the provider reports, so a response that makes several model calls (tool loops) produces several updates. \u0060ResponseCost\u0060 is the total for the current \u0060AskStreamingAsync\u0060 call so far. \u0060SessionCost\u0060 is the total of earlier turns plus \u0060ResponseCost\u0060.",
+    "\u0060ILLMSession\u0060 gets \u0060decimal SessionCost { get; }\u0060 (read-only), so callers can show the total before the first reply, for example for resumed sessions.",
+    "A session resumed with \u0060OpenSessionAsync\u0060 starts from the sum of all usage events in its stored history (the user chose this). New sessions start at 0.",
+    "\u0060ChatBotController\u0060 keeps streaming text only and returns no cost (the user chose this).",
+    "Version bumps: LLMLib 0.3.0 (breaking, minor bump while below 1.0) and CopilotLib 0.7.0.",
+    "The usage-to-dollar arithmetic lives in an internal \u0060CopilotUsageTracker\u0060 in CopilotLib, so it can be unit-tested without a live Copilot connection."
+  ],
+  "outOfScope": [
+    "Showing or returning cost in \u0060ChatBotController\u0060 responses.",
+    "Cost reporting in OpenAILib (it doesn\u0027t implement \u0060ILLMService\u0060).",
+    "Configurable price tables, token-count reporting and quota snapshots.",
+    "Adding cost to \u0060ChatSessionInfo\u0060 or to \u0060GetSessionsAsync\u0060 listings.",
+    "Publishing to nuget.org (manual workflow runs)."
+  ],
+  "furtherConsiderations": [
+    "The exact SDK usage event and the AI-credit field and unit must be confirmed against GitHub.Copilot.SDK 1.0.34 (T2.1). If the SDK only exposes a premium-request multiplier, the AI-credit conversion needs to be revisited with the user.",
+    "If usage events can arrive after \u0060SessionIdleEvent\u0060, the channel-completion logic in T2.2 must wait for them; otherwise the last update of a turn would only show up in the rebuilt total on resume.",
+    "Since this is a breaking change, any other consumers of LLMLib or CopilotLib outside CodeAssistant must be updated before they upgrade.",
+    "\u0060CopilotService\u0060\u0027s default model string \u0022claude-sonnet5.5\u0022 looks like a typo of \u0022claude-sonnet-5.5\u0022. It is unrelated and left unchanged."
+  ]
+}
