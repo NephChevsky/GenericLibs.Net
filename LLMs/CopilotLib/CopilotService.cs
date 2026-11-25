@@ -51,7 +51,19 @@ namespace CopilotLib
 			}
 
 			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, false, cancellationToken);
-			return new CopilotLLMSession(session, sessionId);
+			try
+			{
+				// assistant.usage is ephemeral; session metrics restore the reported subtotal, which may omit unavailable billing.
+				UsageGetMetricsResult metrics = await session.Rpc.Usage.GetMetricsAsync(cancellationToken);
+				decimal restoredCost = CopilotUsageTracker.ToDollarsFromNanoAiu(metrics.TotalNanoAiu);
+				_logger.LogDebug("Restored Copilot session {SessionId} reported cost {SessionCost}", sessionId, restoredCost);
+				return new CopilotLLMSession(session, sessionId, restoredCost);
+			}
+			catch
+			{
+				await session.DisposeAsync();
+				throw;
+			}
 		}
 
 		public async Task<ILLMSession> CreateSessionAsync(LLMSessionOptions? options = null, CancellationToken cancellationToken = default)
@@ -59,7 +71,7 @@ namespace CopilotLib
 			string sessionId = Guid.NewGuid().ToString();
 			CopilotSession session = await GetSessionAsync(options?.SystemMessage, options?.Model, options?.ReasoningEffort, sessionId, true, options?.Tools, true, cancellationToken);
 			_logger.LogInformation("Created Copilot session {SessionId}", sessionId);
-			return new CopilotLLMSession(session, sessionId);
+			return new CopilotLLMSession(session, sessionId, 0m);
 		}
 
 		public async Task<bool> DeleteSessionAsync(string sessionId, CancellationToken cancellationToken = default)

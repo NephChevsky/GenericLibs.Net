@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using GitHub.Copilot;
 using GitHub.Copilot.Rpc;
 using LLMLib;
@@ -11,46 +10,49 @@ namespace CopilotLib
 	public class CopilotLLMSession : ILLMSession
 	{
 		private readonly CopilotSession _session;
+		private readonly CopilotUsageTracker _usage;
+		private readonly SemaphoreSlim _responseLock = new(1, 1);
 		private bool _disposed;
 
-		internal CopilotLLMSession(CopilotSession session, string sessionId)
+		internal CopilotLLMSession(CopilotSession session, string sessionId, decimal initialSessionCost)
 		{
 			_session = session;
+			_usage = new CopilotUsageTracker(initialSessionCost);
 			SessionId = sessionId;
 		}
 
 		public string SessionId { get; }
 
-		public async IAsyncEnumerable<string> AskStreamingAsync(string prompt, IReadOnlyList<ChatAttachment>? attachments = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+		/// <summary>Reported session cost in US dollars; it may be an incomplete subtotal when billing is unavailable.</summary>
+		public decimal SessionCost => _usage.SessionCost;
+
+		/// <summary>Streams text and reported usage; events arriving more than two seconds after idle are not included.</summary>
+		public async IAsyncEnumerable<LLMStreamItem> AskStreamingAsync(string prompt, IReadOnlyList<ChatAttachment>? attachments = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			Channel<string> channel = Channel.CreateUnbounded<string>();
-			using IDisposable subscription = _session.On<SessionEvent>(evt =>
+			await _responseLock.WaitAsync(cancellationToken);
+			try
 			{
-				switch (evt)
+				_usage.BeginResponse();
+				// SDK documentation does not guarantee usage ordering relative to idle; allow a bounded grace period.
+				using CopilotStreamEventHandler handler = new(_usage, TimeSpan.FromSeconds(2));
+				using IDisposable subscription = _session.On<SessionEvent>(handler.Handle);
+
+				MessageOptions messageOptions = new() { Prompt = prompt };
+				if (attachments is { Count: > 0 })
 				{
-					case AssistantMessageDeltaEvent delta:
-						channel.Writer.TryWrite(delta.Data.DeltaContent);
-						break;
-					case SessionErrorEvent error:
-						channel.Writer.TryComplete(new InvalidOperationException(error.Data.Message));
-						break;
-					case SessionIdleEvent:
-						channel.Writer.TryComplete();
-						break;
+					messageOptions.Attachments = [.. attachments.Select(a => (Attachment)new AttachmentBlob { Data = a.Data, MimeType = a.MimeType, DisplayName = a.Name })];
 				}
-			});
 
-			MessageOptions messageOptions = new() { Prompt = prompt };
-			if (attachments is { Count: > 0 })
-			{
-				messageOptions.Attachments = [.. attachments.Select(a => (Attachment)new AttachmentBlob { Data = a.Data, MimeType = a.MimeType, DisplayName = a.Name })];
+				await _session.SendAsync(messageOptions, cancellationToken);
+
+				await foreach (LLMStreamItem item in handler.Reader.ReadAllAsync(cancellationToken))
+				{
+					yield return item;
+				}
 			}
-
-			await _session.SendAsync(messageOptions, cancellationToken);
-
-			await foreach (string chunk in channel.Reader.ReadAllAsync(cancellationToken))
+			finally
 			{
-				yield return chunk;
+				_responseLock.Release();
 			}
 		}
 

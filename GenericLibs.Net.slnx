@@ -10,6 +10,7 @@
   <Project Path="LiveboxLib/LiveboxLib.csproj" />
   <Folder Name="/LLMs/">
     <Project Path="LLMs/CopilotLib/CopilotLib.csproj" Id="93b92885-fcba-4591-9e06-62b915519573" />
+    <Project Path="LLMs/CopilotLib.Tests/CopilotLib.Tests.csproj" />
     <Project Path="LLMs/LLMLib/LLMLib.csproj" />
     <Project Path="LLMs/OpenAILib/OpenAILib.csproj" Id="e270ed25-cbbf-416a-a0bb-b108af7dcb5f" />
   </Folder>
